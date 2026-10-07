@@ -17,6 +17,7 @@
 const std: type = @import("std");
 const c: type = @import("c");
 const engine: type = @import("neko");
+const keys: type = @import("keys.zig");
 
 const Allocator: type = std.mem.Allocator;
 
@@ -965,19 +966,19 @@ fn vt_poll_event(_: *anyopaque) ?engine.Event {
             c.SDL_QUIT => return engine.Event.quit,
             c.SDL_KEYDOWN => return engine.Event{ .key_down = .{
                 .code = raw.key.keysym.sym,
-                .key = .unknown,
+                .key = keys.mapKey(raw.key.keysym.sym),
                 .name = cstr(c.SDL_GetKeyName(raw.key.keysym.sym)),
                 .scan_name = cstr(c.SDL_GetScancodeName(raw.key.keysym.scancode)),
             } },
             c.SDL_KEYUP => return engine.Event{ .key_up = .{
                 .code = raw.key.keysym.sym,
-                .key = .unknown,
+                .key = keys.mapKey(raw.key.keysym.sym),
                 .name = cstr(c.SDL_GetKeyName(raw.key.keysym.sym)),
                 .scan_name = cstr(c.SDL_GetScancodeName(raw.key.keysym.scancode)),
             } },
             c.SDL_MOUSEMOTION => return engine.Event{ .mouse_motion = .{ .x = raw.motion.x, .y = raw.motion.y } },
-            c.SDL_MOUSEBUTTONDOWN => return engine.Event{ .mouse_button_down = .{ .button = .unknown, .x = raw.button.x, .y = raw.button.y } },
-            c.SDL_MOUSEBUTTONUP => return engine.Event{ .mouse_button_up = .{ .button = .unknown, .x = raw.button.x, .y = raw.button.y } },
+            c.SDL_MOUSEBUTTONDOWN => return engine.Event{ .mouse_button_down = .{ .button = keys.mapButton(raw.button.button), .x = raw.button.x, .y = raw.button.y } },
+            c.SDL_MOUSEBUTTONUP => return engine.Event{ .mouse_button_up = .{ .button = keys.mapButton(raw.button.button), .x = raw.button.x, .y = raw.button.y } },
             c.SDL_MOUSEWHEEL => return engine.Event{ .mouse_wheel = .{ .x = @floatFromInt(raw.wheel.x), .y = @floatFromInt(raw.wheel.y) } },
             else => {},
         }

@@ -23,6 +23,14 @@ All notable changes to Neko are documented here. The format follows
   `-Dbackend=sdl2-vulkan`. SPIR-V shaders are precompiled under
   `src/backends/sdl2/shaders/`.
 - `NEKO_VSYNC=0` disables vsync in the Python bindings (handy for benchmarks).
+
+### Fixed
+
+- `sdl2-opengl` and `sdl2-vulkan` now map SDL keys and mouse buttons onto
+  `neko.Key`/`neko.MouseButton`, so `pygame.key.get_pressed()`, `keyDown()` and
+  the mouse buttons work. Previously every key arrived as `unknown`, so games
+  built with those backends ignored keyboard input. The mapping lives in
+  `src/backends/sdl2/keys.zig` and is shared by every SDL2 backend.
 - Optional `-Dsdl2-include` / `-Dsdl2-lib` for building the extension without
   pkg-config (Windows).
 - `docs/backends.md` (how to write a backend) and this changelog.

@@ -5,6 +5,7 @@
 const std: type = @import("std");
 const c: type = @import("c");
 const engine: type = @import("neko");
+const keys: type = @import("keys.zig");
 
 const Allocator: type = std.mem.Allocator;
 const mem: type = std.mem;
@@ -128,75 +129,11 @@ fn cstr(ptr: [*c]const u8) []const u8 {
     return mem.span(sentinel);
 }
 
-/// Maps an SDL key symbol onto our convenience key names.
-fn map_key(sym: c.SDL_Keycode) engine.Key {
-    return switch (sym) {
-        c.SDLK_UP => engine.Key.up,
-        c.SDLK_DOWN => engine.Key.down,
-        c.SDLK_LEFT => engine.Key.left,
-        c.SDLK_RIGHT => engine.Key.right,
-        c.SDLK_RETURN, c.SDLK_RETURN2 => engine.Key.enter,
-        c.SDLK_ESCAPE => engine.Key.escape,
-        c.SDLK_SPACE => engine.Key.space,
-        c.SDLK_TAB => engine.Key.tab,
-        c.SDLK_BACKSPACE => engine.Key.backspace,
-        c.SDLK_a => engine.Key.a,
-        c.SDLK_b => engine.Key.b,
-        c.SDLK_c => engine.Key.c,
-        c.SDLK_d => engine.Key.d,
-        c.SDLK_e => engine.Key.e,
-        c.SDLK_f => engine.Key.f,
-        c.SDLK_g => engine.Key.g,
-        c.SDLK_h => engine.Key.h,
-        c.SDLK_i => engine.Key.i,
-        c.SDLK_j => engine.Key.j,
-        c.SDLK_k => engine.Key.k,
-        c.SDLK_l => engine.Key.l,
-        c.SDLK_m => engine.Key.m,
-        c.SDLK_n => engine.Key.n,
-        c.SDLK_o => engine.Key.o,
-        c.SDLK_p => engine.Key.p,
-        c.SDLK_q => engine.Key.q,
-        c.SDLK_r => engine.Key.r,
-        c.SDLK_s => engine.Key.s,
-        c.SDLK_t => engine.Key.t,
-        c.SDLK_u => engine.Key.u,
-        c.SDLK_v => engine.Key.v,
-        c.SDLK_w => engine.Key.w,
-        c.SDLK_x => engine.Key.x,
-        c.SDLK_y => engine.Key.y,
-        c.SDLK_z => engine.Key.z,
-        c.SDLK_0 => engine.Key.number_0,
-        c.SDLK_1 => engine.Key.number_1,
-        c.SDLK_2 => engine.Key.number_2,
-        c.SDLK_3 => engine.Key.number_3,
-        c.SDLK_4 => engine.Key.number_4,
-        c.SDLK_5 => engine.Key.number_5,
-        c.SDLK_6 => engine.Key.number_6,
-        c.SDLK_7 => engine.Key.number_7,
-        c.SDLK_8 => engine.Key.number_8,
-        c.SDLK_9 => engine.Key.number_9,
-        else => engine.Key.unknown,
-    };
-}
-
-/// Maps an SDL mouse button onto our names.
-fn map_button(button: c.Uint8) engine.MouseButton {
-    return switch (button) {
-        c.SDL_BUTTON_LEFT => engine.MouseButton.left,
-        c.SDL_BUTTON_MIDDLE => engine.MouseButton.middle,
-        c.SDL_BUTTON_RIGHT => engine.MouseButton.right,
-        c.SDL_BUTTON_X1 => engine.MouseButton.x1,
-        c.SDL_BUTTON_X2 => engine.MouseButton.x2,
-        else => engine.MouseButton.unknown,
-    };
-}
-
 fn make_key_event(raw: c.SDL_Event) engine.Event.KeyEvent {
     const sym: c.SDL_Keycode = raw.key.keysym.sym;
     return engine.Event.KeyEvent{
         .code = sym,
-        .key = map_key(sym),
+        .key = keys.mapKey(sym),
         .name = cstr(c.SDL_GetKeyName(sym)),
         .scan_name = cstr(c.SDL_GetScancodeName(raw.key.keysym.scancode)),
     };
@@ -204,7 +141,7 @@ fn make_key_event(raw: c.SDL_Event) engine.Event.KeyEvent {
 
 fn make_button(raw: c.SDL_Event) engine.Event.Button {
     return engine.Event.Button{
-        .button = map_button(raw.button.button),
+        .button = keys.mapButton(raw.button.button),
         .x = raw.button.x,
         .y = raw.button.y,
     };
