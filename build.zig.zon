@@ -1,0 +1,15 @@
+.{
+    .name = .neko,
+    .version = "0.1.0",
+    .fingerprint = 0xefa598427a5739ef,
+    .license = "GPL-3.0-or-later",
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "README.md",
+        "LICENSE",
+        "docs",
+        "examples",
+        "src",
+    },
+}

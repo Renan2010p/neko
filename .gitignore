@@ -1,0 +1,12 @@
+# Zig build artifacts
+.zig-cache/
+zig-out/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.so
+
+# Example/test render output
+*.ppm
