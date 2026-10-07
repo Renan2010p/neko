@@ -56,6 +56,19 @@ pub fn build(b: *Builder) void {
         "Backend to build: sdl2 (default), sdl3, ps2",
     ) orelse .sdl2;
 
+    // Optional SDL2 include/lib directories (needed on Windows, where there is
+    // no pkg-config; set them with e.g. `-Dsdl2-include=C:/SDL2/include`).
+    const sdl2_include: ?[]const u8 = b.option(
+        []const u8,
+        "sdl2-include",
+        "Directory containing SDL2.h / SDL2/ (for the SDL2 backend)",
+    );
+    const sdl2_lib: ?[]const u8 = b.option(
+        []const u8,
+        "sdl2-lib",
+        "Directory containing the SDL2 import libraries",
+    );
+
     // ── Engine module ────────────────────────────────────────────────────
     // Always built. Game code imports this as `neko`.
     // `link_libc` only makes sense on hosted targets; the PS2 is freestanding
@@ -84,7 +97,7 @@ pub fn build(b: *Builder) void {
     // Published under the stable name `neko_backend`, so a game imports the
     // same module no matter which backend was selected.
     const backend_module: *Builder.Module = switch (backend) {
-        .sdl2 => build_sdl2(b, neko, target, optimize),
+        .sdl2 => build_sdl2(b, neko, target, optimize, sdl2_include, sdl2_lib),
         .sdl3 => @panic("neko: the SDL3 backend is not implemented yet"),
         .ps2 => build_ps2(b, neko, target, optimize),
     };
@@ -101,7 +114,7 @@ pub fn build(b: *Builder) void {
         add_examples(b, neko, pygame, backend, target, optimize);
         add_tests(b, target, optimize);
         add_docs(b, neko);
-        add_python(b, neko, pygame, target, optimize);
+        add_python(b, neko, pygame, target, optimize, sdl2_include, sdl2_lib);
     }
 }
 
@@ -113,6 +126,8 @@ fn build_sdl2(
     neko: *Builder.Module,
     target: Builder.ResolvedTarget,
     optimize: builtin.OptimizeMode,
+    sdl2_include: ?[]const u8,
+    sdl2_lib: ?[]const u8,
 ) *Builder.Module {
     const c_translate: *Builder.Step.TranslateC = b.addTranslateC(.{
         .root_source_file = b.path("src/platform/sdl2/SDL2.h"),
@@ -120,6 +135,7 @@ fn build_sdl2(
         .target = target,
         .link_libc = true,
     });
+    if (sdl2_include) |inc| c_translate.addIncludePath(.{ .cwd_relative = inc });
     c_translate.linkSystemLibrary("sdl2", .{});
     c_translate.linkSystemLibrary("SDL2_ttf", .{});
     c_translate.linkSystemLibrary("SDL2_image", .{});
@@ -141,6 +157,8 @@ fn build_sdl2(
     backend.linkSystemLibrary("SDL2_ttf", .{});
     backend.linkSystemLibrary("SDL2_image", .{});
     backend.linkSystemLibrary("SDL2_mixer", .{});
+    if (sdl2_include) |inc| backend.addIncludePath(.{ .cwd_relative = inc });
+    if (sdl2_lib) |lib| backend.addLibraryPath(.{ .cwd_relative = lib });
 
     return backend;
 }
@@ -285,6 +303,8 @@ fn add_python(
     pygame: *Builder.Module,
     target: Builder.ResolvedTarget,
     optimize: builtin.OptimizeMode,
+    sdl2_include: ?[]const u8,
+    sdl2_lib: ?[]const u8,
 ) void {
     const python_include: []const u8 = b.option(
         []const u8,
@@ -303,6 +323,8 @@ fn add_python(
         },
     });
     ext_module.addIncludePath(.{ .cwd_relative = python_include });
+    if (sdl2_include) |inc| ext_module.addIncludePath(.{ .cwd_relative = inc });
+    if (sdl2_lib) |lib| ext_module.addLibraryPath(.{ .cwd_relative = lib });
 
     const ext: *Builder.Step.Compile = b.addLibrary(.{
         .linkage = .dynamic,
