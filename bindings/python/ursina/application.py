@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import __main__
+import os
 import sys
 
 from . import _neko
@@ -23,6 +24,8 @@ class Ursina:
 
     def __init__(self, title="ursina", size=(800, 600), vsync=True, **kwargs):
         w, h = size if size else (800, 600)
+        # The native layer reads NEKO_VSYNC at init; respect an explicit override.
+        os.environ.setdefault("NEKO_VSYNC", "1" if vsync else "0")
         _neko.init(int(w), int(h), str(title))
         self.title = title
         self.running = True

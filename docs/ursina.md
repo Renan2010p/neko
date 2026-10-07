@@ -158,6 +158,63 @@ stays ergonomic in Python — same split as the pygame layer.
 | `Text`, `Button`, `Panel` | 2D UI over `camera.ui` in `neko.render` + `neko.text` |
 | `model='cube'` | `neko.mesh.cube()` |
 
+## Compatibility today (Neko vs Ursina)
+
+What the `ursina` layer in `bindings/python/ursina/` covers right now, against
+the real Ursina (8.x, Panda3D-based). ✅ done · 🟡 partial · ❌ missing.
+
+| Area | Ursina | Neko `ursina` today |
+|------|--------|---------------------|
+| App / loop | `Ursina`, task manager, `run`/`step` | ✅ `Ursina.run/step/quit`, global `update()`/`input(key)` |
+| Transform | `Entity` = `NodePath`, local+world, parent/children | 🟡 local only; children listed but not composed |
+| Rotation | HPR ↔ Euler, `rotation_*` (degrees) | 🟡 Euler degrees only |
+| Meshes | `.bam`/`.ursinamesh` + procedural classes | 🟡 `cube`, `quad`, `plane` |
+| Materials | color, texture, shader, `texture_scale/offset` | 🟡 color + one fixed directional light; no texture |
+| Lighting | Panda3D lights, shadows, fog, custom shaders | 🟡 one hard-coded light, no shadows/fog |
+| Camera | `camera`, `fov`, `camera.ui` | 🟡 `camera` (position/rotation/fov/near/far); no `ui` |
+| Input | `held_keys`, mouse, gamepad, `text_input`, rebinds | 🟡 `held_keys`, `input(key)`; no mouse/gamepad/text |
+| Collision | colliders + `raycast`/`boxcast` | ❌ |
+| Audio | `Audio`, music system | ❌ |
+| UI | `Text`, `Button`, `Panel`, `Slider`, `TextField`, … | ❌ |
+| Sequences | `Sequence`, `Func`, `Wait`, `curve`, `Animator` | ❌ |
+| Math | `Vec2/3/4`, `Quat`, `Mat3/Mat4` | 🟡 `Vec3` (Python); `Vec3`/`Mat4` in Zig |
+| Assets | `load_model`, `load_texture`, glTF/`.blend` | ❌ |
+| Misc | `destroy`, `duplicate`, `every`, `SmoothFollow` | ❌ |
+
+In short: the **hello-world/“move a cube with the keyboard”** subset works; the
+engine-level features (textures, lighting, UI, audio, physics, assets) do not
+exist yet. That is exactly what phases M2–M6 are for.
+
+### Performance (same code, same machine)
+
+The same benchmark script (`app.step()` in a bounded loop, N rotating cubes,
+800×600, vsync off) on an Intel HD 4400 under X11/XWayland, real Ursina 8.3
+(Panda3D 1.10) vs Neko's `ursina` on `sdl2-opengl`:
+
+| Entities | Real Ursina | Neko `ursina` | Neko / Ursina |
+|---------:|------------:|--------------:|--------------:|
+| 16       | 57.6*       | 349.0         | ~6× |
+| 256      | 55.0*       | 302.3         | ~5.5× |
+| 1024     | 23.3        | 212.6         | ~9× |
+| 4096     | 6.7         | 79.0          | ~12× |
+
+`*` Ursina is swap/vsync-capped around 60 FPS at low counts, so its real
+ceiling is hidden there. With **static** entities (no per-frame Python update,
+isolating rendering):
+
+| Entities | Real Ursina | Neko `ursina` | Neko / Ursina |
+|---------:|------------:|--------------:|--------------:|
+| 1024     | 41.8        | 260.6         | ~6× |
+| 4096     | 13.6        | 94.1          | ~7× |
+
+Read this with the caveats above: Neko renders a tiny, feature-free subset
+(one untextured mesh kind per entity, one light), while Ursina entities are
+full Panda3D `NodePath`s with shaders, materials, culling and a scene graph.
+Neither engine is vsync-free at low entity counts on this compositor. The point
+is not "Neko is faster at being Ursina" — it is that keeping the per-frame
+per-entity work out of Python (transform + one C call here) scales much better
+when a game puts a lot of objects on screen.
+
 ## Notes and differences
 
 - Ursina ships `.bam`/`.ursinamesh` assets built from Blender. Neko should ship
