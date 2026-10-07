@@ -1107,9 +1107,11 @@ fn drawPolygonF(_: [*c]c.PyObject, args: [*c]c.PyObject, kwds: [*c]c.PyObject) c
     while (i < count) : (i += 1) {
         const item = c.PySequence_GetItem(fast, @intCast(i)) orelse return null;
         defer c.Py_DecRef(item);
-        var c2: [2]f64 = undefined;
-        if (numsOf(item, &c2) < 2) return fail("draw.polygon: points must be (x, y)");
-        points[i] = .{ .x = @floatCast(c2[0]), .y = @floatCast(c2[1]) };
+        const xo = c.PySequence_GetItem(item, 0) orelse return null;
+        defer c.Py_DecRef(xo);
+        const yo = c.PySequence_GetItem(item, 1) orelse return null;
+        defer c.Py_DecRef(yo);
+        points[i] = .{ .x = @floatCast(numOf(xo)), .y = @floatCast(numOf(yo)) };
     }
     var ps = surfAsPg(s);
     pg.draw.polygon_f(&ps, points, unpackColor(colorOf(co)));
@@ -1135,9 +1137,11 @@ fn drawLines(_: [*c]c.PyObject, args: [*c]c.PyObject) callconv(.c) [*c]c.PyObjec
     while (i < count) : (i += 1) {
         const item = c.PySequence_GetItem(fast, @intCast(i)) orelse return null;
         defer c.Py_DecRef(item);
-        var c2: [2]f64 = undefined;
-        if (numsOf(item, &c2) < 2) return fail("draw.lines: points must be (x, y)");
-        pts[i] = .{ .x = @floatCast(c2[0]), .y = @floatCast(c2[1]) };
+        const xo = c.PySequence_GetItem(item, 0) orelse return null;
+        defer c.Py_DecRef(xo);
+        const yo = c.PySequence_GetItem(item, 1) orelse return null;
+        defer c.Py_DecRef(yo);
+        pts[i] = .{ .x = @floatCast(numOf(xo)), .y = @floatCast(numOf(yo)) };
     }
     var ps = surfAsPg(s);
     const col = unpackColor(colorOf(co));

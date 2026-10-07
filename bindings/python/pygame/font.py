@@ -68,6 +68,8 @@ class Font:
         self._bold = bold
         self._italic = italic
         self._font = self._load()
+        self._render_cache = {}
+        self._size_cache = {}
 
     def _load(self):
         _Image, _ImageDraw, ImageFont = _pil()
@@ -87,25 +89,40 @@ class Font:
         return ImageFont.load_default(size=max(1, pil_size))
 
     def render(self, text, antialias=True, color=Color(255, 255, 255), background=None):
-        Image, ImageDraw, _ImageFont = _pil()
         c = color if isinstance(color, Color) else Color(color)
+        if background is None:
+            bg_key = None
+            bg = (0, 0, 0, 0)
+        else:
+            bc = background if isinstance(background, Color) else Color(background)
+            bg_key = (bc.r, bc.g, bc.b, bc.a)
+            bg = bg_key
+        key = (text, (c.r, c.g, c.b, c.a), bg_key)
+        surf = self._render_cache.get(key)
+        if surf is not None:
+            return surf
+        Image, ImageDraw, _ImageFont = _pil()
         left, top, right, bottom = self._font.getbbox(text)
         ascent, descent = self._font.getmetrics()
         w = max(1, right - left)
         h = max(1, ascent + descent)
-        if background is None:
-            bg = (0, 0, 0, 0)
-        else:
-            bc = background if isinstance(background, Color) else Color(background)
-            bg = (bc.r, bc.g, bc.b, bc.a)
         img = Image.new("RGBA", (w, h), bg)
         draw = ImageDraw.Draw(img)
         draw.text((-left, 0), text, font=self._font, fill=(c.r, c.g, c.b, c.a))
-        return _image.frombytes(img.tobytes(), img.size, "RGBA")
+        surf = _image.frombytes(img.tobytes(), img.size, "RGBA")
+        if len(self._render_cache) > 1024:
+            self._render_cache.clear()
+        self._render_cache[key] = surf
+        return surf
 
     def size(self, text):
+        v = self._size_cache.get(text)
+        if v is not None:
+            return v
         left, top, right, bottom = self._font.getbbox(text)
-        return (max(0, right - left), self.get_linesize())
+        v = (max(0, right - left), self.get_linesize())
+        self._size_cache[text] = v
+        return v
 
     def get_linesize(self):
         a, d = self._font.getmetrics()

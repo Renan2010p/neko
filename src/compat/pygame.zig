@@ -553,6 +553,7 @@ pub const draw: type = struct {
             max_y = @max(max_y, p.y);
         }
         var xs: [64]f32 = undefined;
+        var drew = false;
         var y: i32 = @intFromFloat(@floor(min_y));
         const y_end: i32 = @intFromFloat(@ceil(max_y));
         while (y <= y_end) : (y += 1) {
@@ -579,10 +580,12 @@ pub const draw: type = struct {
             var k: usize = 0;
             while (k + 1 < n) : (k += 2) {
                 hline(s, @intFromFloat(xs[k]), @intFromFloat(xs[k + 1]), y, color);
+                drew = true;
             }
         }
-        // Stroke the edges too: very thin (far) polygons would otherwise
-        // vanish because the scanline fill can miss their only row.
+        // Only stroke the edges when the scanline fill drew nothing — that is
+        // the very thin (far) polygon case; thick ones are already filled.
+        if (drew) return;
         var e: usize = 0;
         while (e < points.len) : (e += 1) {
             const a: PointF = points[e];
