@@ -15,6 +15,14 @@ All notable changes to Neko are documented here. The format follows
   plus a `pygame` package, so `import pygame` games run on Neko. The hot paths
   (a native `Surface` type, `draw`, blit, transform) are implemented in Zig.
 - SDL2 rendering falls back to software when no GPU is available.
+- **`sdl2-opengl` backend**: an SDL2 window with an OpenGL 3.3 core presenter
+  (one streaming texture drawn as a full-screen quad). Select with
+  `-Dbackend=sdl2-opengl`.
+- **`sdl2-vulkan` backend**: an SDL2 window presenting through Vulkan
+  (swapchain + graphics pipeline + streaming texture). Select with
+  `-Dbackend=sdl2-vulkan`. SPIR-V shaders are precompiled under
+  `src/backends/sdl2/shaders/`.
+- `NEKO_VSYNC=0` disables vsync in the Python bindings (handy for benchmarks).
 - Optional `-Dsdl2-include` / `-Dsdl2-lib` for building the extension without
   pkg-config (Windows).
 - `docs/backends.md` (how to write a backend) and this changelog.

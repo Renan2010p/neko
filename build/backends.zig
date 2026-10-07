@@ -7,11 +7,15 @@ const std: type = @import("std");
 const backend: type = @import("backend.zig");
 
 const sdl2: type = @import("backends/sdl2.zig");
+const sdl2_opengl: type = @import("backends/sdl2_opengl.zig");
+const sdl2_vulkan: type = @import("backends/sdl2_vulkan.zig");
 const ps2: type = @import("backends/ps2.zig");
 
 /// Every backend this package can build. The first entry is the default.
 pub const all: []const backend.Backend = &.{
     sdl2.plugin,
+    sdl2_opengl.plugin,
+    sdl2_vulkan.plugin,
     ps2.plugin,
 };
 

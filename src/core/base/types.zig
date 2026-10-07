@@ -209,6 +209,10 @@ pub const BackendKind: type = enum {
     sdl2,
     sdl3,
     ps2,
+    /// SDL2 window + OpenGL presenter (the pygame path).
+    sdl2_opengl,
+    /// SDL2 window + Vulkan presenter (the pygame path).
+    sdl2_vulkan,
 };
 
 /// Everything a backend needs to open a window and run.

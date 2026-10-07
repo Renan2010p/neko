@@ -25,6 +25,20 @@ on the PlayStation 2 (gsKit + PS2SDK, freestanding).
 sudo apt install libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libsdl2-mixer-dev
 ```
 
+Desktop backends: `sdl2` (SDL_Renderer, the default), `sdl2-opengl`
+(SDL2 window + OpenGL presenter) and `sdl2-vulkan` (SDL2 window + Vulkan
+presenter). The GL/Vulkan presenters target the pygame translation layer and
+need:
+
+- OpenGL: `libGL`
+- Vulkan: `vulkan-loader` + `Vulkan-Headers` (headers `vulkan/vulkan.h`)
+- Only to **regenerate the SPIR-V shaders**: `glslang` (`glslangValidator`).
+
+```sh
+# Void Linux
+sudo xbps-install -S glslang SPIRV-Tools Vulkan-Tools shaderc
+```
+
 ## A whole game
 
 No game struct, no manual loop — one frame callback:

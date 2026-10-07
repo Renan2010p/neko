@@ -111,6 +111,12 @@ fn pyInit(_: [*c]c.PyObject, args: [*c]c.PyObject) callconv(.c) [*c]c.PyObject {
         threaded_ready = true;
     }
 
+    const vsync_env: ?[*:0]const u8 = @ptrCast(std.c.getenv("NEKO_VSYNC"));
+    const vsync = if (vsync_env) |v|
+        !(std.mem.eql(u8, std.mem.span(v), "0") or std.mem.eql(u8, std.mem.span(v), "false"))
+    else
+        true;
+
     const config: neko.Config = .{
         .allocator = std.heap.c_allocator,
         .io = threaded.io(),
@@ -119,7 +125,7 @@ fn pyInit(_: [*c]c.PyObject, args: [*c]c.PyObject) callconv(.c) [*c]c.PyObject {
         .height = @intCast(height),
         .assets_dir = "assets",
         .fullscreen = false,
-        .vsync = true,
+        .vsync = vsync,
     };
     if (!neko.screen.init(config)) return fail("neko: could not open the window");
     screen_ready = true;
