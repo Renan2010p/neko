@@ -29,7 +29,7 @@
 //! `event`, `update(self, dt)`, `draw` and call `run` / `runOptions`.
 
 const std: type = @import("std");
-const types: type = @import("types.zig");
+const types: type = @import("base/types.zig");
 const screen: type = @import("system/screen.zig");
 const lifecycle: type = @import("system/lifecycle.zig");
 const input: type = @import("system/input.zig");

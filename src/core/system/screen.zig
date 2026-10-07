@@ -11,9 +11,9 @@
 const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
 const platform: type = @import("../platform.zig");
-const types: type = @import("../types.zig");
-const context: type = @import("../context.zig");
-const backend: type = @import("../backend.zig");
+const types: type = @import("../base/types.zig");
+const context: type = @import("../base/context.zig");
+const backend: type = @import("../base/backend.zig");
 const sprite: type = @import("../graphics/sprite.zig");
 
 /// Opens the window and prepares everything.

@@ -1,7 +1,7 @@
 //! `neko.time` — monotonic clock and the current frame's delta time.
 
-const context: type = @import("../context.zig");
-const backend: type = @import("../backend.zig");
+const context: type = @import("../base/context.zig");
+const backend: type = @import("../base/backend.zig");
 
 var current_dt: f32 = 0;
 

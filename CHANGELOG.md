@@ -31,6 +31,9 @@ All notable changes to Neko are documented here. The format follows
 - **Repository layout**: backends live in `src/backends/<name>/`, the seam is
   `src/core/platform.zig`, tests live under `src/test/`, and `src/neko.zig` is
   the only file at the root of `src/`.
+- **`src/core/` modularized**: the foundation (`types`, `backend`, `context`)
+  lives in `src/core/base/`, and `neko.math` is split into
+  `src/core/math/{vec2,scalar}.zig` (with `math.zig` as the facade).
 - `neko_pygame` draw primitives write pixels directly (no alpha blend on draw),
   matching pygame; blit is SIMD-accelerated.
 - Various render fidelity fixes: solid ellipse rings, real `draw.arc`, thick

@@ -16,7 +16,7 @@
 //!     }
 
 const std: type = @import("std");
-const types: type = @import("../types.zig");
+const types: type = @import("../base/types.zig");
 const draw_mod: type = @import("../graphics/draw.zig");
 const screen: type = @import("screen.zig");
 const input: type = @import("input.zig");

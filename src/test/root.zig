@@ -5,7 +5,7 @@
 //! unit-testable.
 
 test {
-    _ = @import("../core/types.zig");
+    _ = @import("../core/base/types.zig");
     _ = @import("../core/math.zig");
     _ = @import("../core/system/random.zig");
     _ = @import("../core/system/localization.zig");

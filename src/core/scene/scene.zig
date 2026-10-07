@@ -13,7 +13,7 @@
 
 const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
-const types: type = @import("../types.zig");
+const types: type = @import("../base/types.zig");
 const event: type = @import("../system/event.zig");
 const draw_mod: type = @import("../graphics/draw.zig");
 

@@ -7,8 +7,8 @@
 
 const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
-const context: type = @import("../../context.zig");
-const backend: type = @import("../../backend.zig");
+const context: type = @import("../../base/context.zig");
+const backend: type = @import("../../base/backend.zig");
 
 /// Writes `data` to `<dir_path>/<file_name>`, creating the directory.
 /// Returns false when the backend has no filesystem or the write failed.

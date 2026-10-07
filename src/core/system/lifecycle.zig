@@ -1,7 +1,7 @@
 //! `engine.lifecycle` — the run loop's stop condition.
 
-const context: type = @import("../context.zig");
-const backend: type = @import("../backend.zig");
+const context: type = @import("../base/context.zig");
+const backend: type = @import("../base/backend.zig");
 
 /// True while the window is open and no stop was requested.
 pub fn keeps_running() bool {

@@ -1,8 +1,8 @@
 //! `engine.sound` — sound loading, playback and volume.
 
-const types: type = @import("../types.zig");
-const context: type = @import("../context.zig");
-const backend: type = @import("../backend.zig");
+const types: type = @import("../base/types.zig");
+const context: type = @import("../base/context.zig");
+const backend: type = @import("../base/backend.zig");
 
 /// Loads a sound (WAV/OGG/MP3/FLAC) from `path`.
 pub fn load(path: []const u8) ?types.SoundHandle {

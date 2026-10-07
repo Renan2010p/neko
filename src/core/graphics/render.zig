@@ -5,7 +5,7 @@
 //! per-slice CPU draws.
 
 const std: type = @import("std");
-const types: type = @import("../types.zig");
+const types: type = @import("../base/types.zig");
 const texture: type = @import("texture.zig");
 const screen: type = @import("../system/screen.zig");
 

@@ -5,7 +5,7 @@
 
 const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
-const types: type = @import("../types.zig");
+const types: type = @import("../base/types.zig");
 const node_mod: type = @import("node.zig");
 const Node: type = node_mod.Node;
 

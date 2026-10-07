@@ -3,7 +3,7 @@
 //! The port of the effect half of the C++ `DrawUtils`: camera noise, scanlines,
 //! vignette, a solid tone overlay and a VHS-style OSD.
 
-const types: type = @import("../types.zig");
+const types: type = @import("../base/types.zig");
 const draw_mod: type = @import("draw.zig");
 const sprite: type = @import("sprite.zig");
 const screen: type = @import("../system/screen.zig");

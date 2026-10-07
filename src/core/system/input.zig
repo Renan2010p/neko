@@ -20,9 +20,9 @@
 //! `endFrame()` at the bottom; `neko.run` / `neko.app` already do.
 
 const std: type = @import("std");
-const types: type = @import("../types.zig");
-const context: type = @import("../context.zig");
-const backend: type = @import("../backend.zig");
+const types: type = @import("../base/types.zig");
+const context: type = @import("../base/context.zig");
+const backend: type = @import("../base/backend.zig");
 const event: type = @import("event.zig");
 const lifecycle: type = @import("lifecycle.zig");
 

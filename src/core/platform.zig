@@ -14,8 +14,8 @@
 //! `neko_backend`, so a game never sees it. Switching backends changes the
 //! implementation behind `create()` and nothing else in `src/core/**`.
 
-const backend_contract: type = @import("backend.zig");
-const types: type = @import("types.zig");
+const backend_contract: type = @import("base/backend.zig");
+const types: type = @import("base/types.zig");
 
 /// The concrete, build-selected backend module. `neko_backend` is provided by
 /// `build.zig`; the core reaches it only through this file.

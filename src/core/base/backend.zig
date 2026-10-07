@@ -10,7 +10,7 @@
 const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
 const types: type = @import("types.zig");
-const event: type = @import("system/event.zig");
+const event: type = @import("../system/event.zig");
 
 /// A type-erased handle to a platform backend.
 pub const Backend: type = struct {

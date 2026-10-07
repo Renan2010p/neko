@@ -1,8 +1,8 @@
 //! `engine.texture` — textures, offscreen targets and render targets.
 
-const types: type = @import("../types.zig");
-const context: type = @import("../context.zig");
-const backend: type = @import("../backend.zig");
+const types: type = @import("../base/types.zig");
+const context: type = @import("../base/context.zig");
+const backend: type = @import("../base/backend.zig");
 
 /// Loads a texture from `path` (PNG, …).
 pub fn load(path: []const u8) ?types.TextureHandle {

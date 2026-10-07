@@ -7,7 +7,7 @@
 
 const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
-const types: type = @import("../types.zig");
+const types: type = @import("../base/types.zig");
 const event: type = @import("../system/event.zig");
 
 /// A node in the scene tree.

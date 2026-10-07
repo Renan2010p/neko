@@ -34,8 +34,8 @@
 //! type is for when you want to own the loop and the `switch (event)` yourself.
 
 const std: type = @import("std");
-const types: type = @import("../types.zig");
-const context: type = @import("../context.zig");
+const types: type = @import("../base/types.zig");
+const context: type = @import("../base/context.zig");
 const screen: type = @import("screen.zig");
 const input: type = @import("input.zig");
 const lifecycle: type = @import("lifecycle.zig");

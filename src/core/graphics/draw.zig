@@ -3,9 +3,9 @@
 //!     engine.draw.clear(engine.Color{ .r = 3, .g = 3, .b = 5 });
 //!     engine.draw.rect(.{ .x = 10, .y = 10, .w = 100, .h = 40 }, color, true);
 
-const types: type = @import("../types.zig");
-const context: type = @import("../context.zig");
-const backend: type = @import("../backend.zig");
+const types: type = @import("../base/types.zig");
+const context: type = @import("../base/context.zig");
+const backend: type = @import("../base/backend.zig");
 const sprite_mod: type = @import("sprite.zig");
 
 /// Fills the whole frame buffer with `color`.

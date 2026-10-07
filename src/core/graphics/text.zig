@@ -1,8 +1,8 @@
 //! `engine.text` — font loading and text drawing.
 
-const types: type = @import("../types.zig");
-const context: type = @import("../context.zig");
-const backend: type = @import("../backend.zig");
+const types: type = @import("../base/types.zig");
+const context: type = @import("../base/context.zig");
+const backend: type = @import("../base/backend.zig");
 
 /// Optional parameters shared by the text functions (`neko.text` and
 /// `neko.sprite`). Defaults mirror the C++ engine: size 24, white, not

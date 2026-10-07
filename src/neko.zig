@@ -84,9 +84,9 @@
 
 const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
-const types: type = @import("core/types.zig");
-const context: type = @import("core/context.zig");
-const backend: type = @import("core/backend.zig");
+const types: type = @import("core/base/types.zig");
+const context: type = @import("core/base/context.zig");
+const backend: type = @import("core/base/backend.zig");
 
 // ── Shared types ─────────────────────────────────────────────────────────
 

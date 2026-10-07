@@ -9,8 +9,8 @@ const mem: type = std.mem;
 const ascii: type = std.ascii;
 const fmt: type = std.fmt;
 
-const types: type = @import("../types.zig");
-const context: type = @import("../context.zig");
+const types: type = @import("../base/types.zig");
+const context: type = @import("../base/context.zig");
 const draw_mod: type = @import("draw.zig");
 const texture: type = @import("texture.zig");
 const text_mod: type = @import("text.zig");

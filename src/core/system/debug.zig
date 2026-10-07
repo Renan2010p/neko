@@ -5,7 +5,7 @@
 
 const std: type = @import("std");
 const fmt: type = std.fmt;
-const types: type = @import("../types.zig");
+const types: type = @import("../base/types.zig");
 const sprite: type = @import("../graphics/sprite.zig");
 const time: type = @import("../system/time.zig");
 
