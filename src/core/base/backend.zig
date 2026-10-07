@@ -11,11 +11,14 @@ const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
 const types: type = @import("types.zig");
 const event: type = @import("../system/event.zig");
+const render3d: type = @import("render3d.zig");
 
 /// A type-erased handle to a platform backend.
 pub const Backend: type = struct {
     ptr: *anyopaque,
     vtable: *const VTable,
+    /// Optional 3D pipeline. `null` for 2D-only backends.
+    render3d: ?*const render3d.VTable = null,
 
     /// The backend function table. Every backend must provide all of these.
     pub const VTable: type = struct {

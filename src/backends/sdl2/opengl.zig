@@ -60,6 +60,44 @@ const FRAG_SRC =
     \\}
 ;
 
+// ── 3D pipeline (M1) ─────────────────────────────────────────────────────────
+
+const VERT3D_SRC =
+    \\#version 330 core
+    \\layout(location = 0) in vec3 a_pos;
+    \\layout(location = 1) in vec3 a_normal;
+    \\layout(location = 2) in vec2 a_uv;
+    \\uniform mat4 u_model;
+    \\uniform mat4 u_view;
+    \\uniform mat4 u_proj;
+    \\out vec3 v_normal;
+    \\out vec2 v_uv;
+    \\void main() {
+    \\    vec4 world = u_model * vec4(a_pos, 1.0);
+    \\    v_normal = mat3(u_model) * a_normal;
+    \\    v_uv = a_uv;
+    \\    gl_Position = u_proj * u_view * world;
+    \\}
+;
+
+const FRAG3D_SRC =
+    \\#version 330 core
+    \\in vec3 v_normal;
+    \\in vec2 v_uv;
+    \\uniform vec4 u_tint;
+    \\out vec4 o_color;
+    \\void main() {
+    \\    vec3 n = normalize(v_normal);
+    \\    vec3 light_dir = normalize(vec3(0.35, 0.8, 0.45));
+    \\    float lambert = max(dot(n, light_dir), 0.0);
+    \\    float shade = 0.35 + 0.65 * lambert; // ambient + one directional light
+    \\    o_color = vec4(u_tint.rgb * shade, u_tint.a);
+    \\}
+;
+
+const MESH_KINDS: [3]engine.mesh3d.Kind = .{ .cube, .quad, .plane };
+const deg_to_rad: f32 = std.math.pi / 180.0;
+
 const OpenglEngine: type = struct {
     allocator: Allocator = undefined,
     assets_dir: []u8 = &.{},
@@ -75,8 +113,24 @@ const OpenglEngine: type = struct {
     logical_h: u32 = 0,
     running: bool = false,
 
+    // 3D pipeline.
+    prog3d: gl.GLuint = 0,
+    u3d_model: gl.GLint = -1,
+    u3d_view: gl.GLint = -1,
+    u3d_proj: gl.GLint = -1,
+    u3d_tint: gl.GLint = -1,
+    vaos3d: [3]gl.GLuint = .{ 0, 0, 0 },
+    vbos3d: [3]gl.GLuint = .{ 0, 0, 0 },
+    ebos3d: [3]gl.GLuint = .{ 0, 0, 0 },
+    counts3d: [3]gl.GLsizei = .{ 0, 0, 0 },
+    r3d_ok: bool = false,
+
     pub fn backend(self: *OpenglEngine) engine.Backend {
-        return engine.Backend{ .ptr = @ptrCast(self), .vtable = &vtable };
+        return engine.Backend{
+            .ptr = @ptrCast(self),
+            .vtable = &vtable,
+            .render3d = if (self.r3d_ok) &render3d_vtable else null,
+        };
     }
 };
 
@@ -117,10 +171,10 @@ fn compileShader(kind_: gl.GLenum, src: [*:0]const u8) ?gl.GLuint {
     return sh;
 }
 
-fn linkProgram() ?gl.GLuint {
-    const vs = compileShader(gl.GL_VERTEX_SHADER, VERT_SRC) orelse return null;
+fn linkProgramFrom(vs_src: [*:0]const u8, fs_src: [*:0]const u8) ?gl.GLuint {
+    const vs = compileShader(gl.GL_VERTEX_SHADER, vs_src) orelse return null;
     defer gl.glDeleteShader(vs);
-    const fs = compileShader(gl.GL_FRAGMENT_SHADER, FRAG_SRC) orelse return null;
+    const fs = compileShader(gl.GL_FRAGMENT_SHADER, fs_src) orelse return null;
     defer gl.glDeleteShader(fs);
 
     const prog: gl.GLuint = gl.glCreateProgram();
@@ -134,6 +188,97 @@ fn linkProgram() ?gl.GLuint {
         return null;
     }
     return prog;
+}
+
+fn linkProgram() ?gl.GLuint {
+    return linkProgramFrom(VERT_SRC, FRAG_SRC);
+}
+
+// ── 3D pipeline ──────────────────────────────────────────────────────────────
+
+/// Builds the 3D program and one VAO/VBO/EBO per built-in mesh. Best effort:
+/// returns false (and the backend stops advertising 3D) on any failure.
+fn init3d(self: *OpenglEngine) bool {
+    self.prog3d = linkProgramFrom(VERT3D_SRC, FRAG3D_SRC) orelse return false;
+    self.u3d_model = gl.glGetUniformLocation(self.prog3d, "u_model");
+    self.u3d_view = gl.glGetUniformLocation(self.prog3d, "u_view");
+    self.u3d_proj = gl.glGetUniformLocation(self.prog3d, "u_proj");
+    self.u3d_tint = gl.glGetUniformLocation(self.prog3d, "u_tint");
+
+    const stride: gl.GLsizei = @sizeOf(engine.mesh3d.Vertex);
+    for (MESH_KINDS, 0..) |mesh_kind, i| {
+        gl.glGenVertexArrays(1, &self.vaos3d[i]);
+        gl.glGenBuffers(1, &self.vbos3d[i]);
+        gl.glGenBuffers(1, &self.ebos3d[i]);
+        gl.glBindVertexArray(self.vaos3d[i]);
+
+        const verts: []const engine.mesh3d.Vertex = engine.mesh3d.vertices(mesh_kind);
+        gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.vbos3d[i]);
+        gl.glBufferData(gl.GL_ARRAY_BUFFER, @intCast(@sizeOf(engine.mesh3d.Vertex) * verts.len), verts.ptr, gl.GL_STATIC_DRAW);
+
+        const idx: []const u32 = engine.mesh3d.indices(mesh_kind);
+        gl.glBindBuffer(gl.GL_ELEMENT_ARRAY_BUFFER, self.ebos3d[i]);
+        gl.glBufferData(gl.GL_ELEMENT_ARRAY_BUFFER, @intCast(@sizeOf(u32) * idx.len), idx.ptr, gl.GL_STATIC_DRAW);
+
+        gl.glEnableVertexAttribArray(0);
+        gl.glVertexAttribPointer(0, 3, gl.GL_FLOAT, gl.GL_FALSE, stride, @ptrFromInt(0));
+        gl.glEnableVertexAttribArray(1);
+        gl.glVertexAttribPointer(1, 3, gl.GL_FLOAT, gl.GL_FALSE, stride, @ptrFromInt(12));
+        gl.glEnableVertexAttribArray(2);
+        gl.glVertexAttribPointer(2, 2, gl.GL_FLOAT, gl.GL_FALSE, stride, @ptrFromInt(24));
+        self.counts3d[i] = @intCast(idx.len);
+    }
+    gl.glBindVertexArray(0);
+    return true;
+}
+
+const render3d_vtable: engine.Render3dVTable = .{
+    .begin3d = r3d_begin,
+    .draw3d = r3d_draw,
+    .end3d = r3d_end,
+};
+
+fn r3d_begin(ptr: *anyopaque, view: engine.Mat4, fov_degrees: f32, near: f32, far: f32) void {
+    const self: *OpenglEngine = as_self(ptr);
+    if (self.prog3d == 0) return;
+
+    var w: c_int = 0;
+    var h: c_int = 0;
+    c.SDL_GL_GetDrawableSize(self.window, &w, &h);
+    const aspect: f32 = if (h > 0) @as(f32, @floatFromInt(w)) / @as(f32, @floatFromInt(h)) else 1.0;
+    const proj: engine.Mat4 = engine.Mat4.perspective(fov_degrees * deg_to_rad, aspect, near, far);
+
+    gl.glViewport(0, 0, w, h);
+    gl.glEnable(gl.GL_DEPTH_TEST);
+    gl.glDepthFunc(gl.GL_LESS);
+    gl.glClearColor(0.05, 0.06, 0.09, 1.0);
+    gl.glClear(gl.GL_COLOR_BUFFER_BIT | gl.GL_DEPTH_BUFFER_BIT);
+    gl.glUseProgram(self.prog3d);
+    gl.glUniformMatrix4fv(self.u3d_view, 1, gl.GL_FALSE, &view.m);
+    gl.glUniformMatrix4fv(self.u3d_proj, 1, gl.GL_FALSE, &proj.m);
+}
+
+fn r3d_draw(ptr: *anyopaque, mesh_kind: engine.mesh3d.Kind, model: engine.Mat4, tint: engine.Color) void {
+    const self: *OpenglEngine = as_self(ptr);
+    if (self.prog3d == 0) return;
+
+    const i: usize = @intFromEnum(mesh_kind);
+    gl.glUseProgram(self.prog3d);
+    gl.glUniformMatrix4fv(self.u3d_model, 1, gl.GL_FALSE, &model.m);
+    gl.glUniform4f(
+        self.u3d_tint,
+        @as(f32, @floatFromInt(tint.r)) / 255.0,
+        @as(f32, @floatFromInt(tint.g)) / 255.0,
+        @as(f32, @floatFromInt(tint.b)) / 255.0,
+        @as(f32, @floatFromInt(tint.a)) / 255.0,
+    );
+    gl.glBindVertexArray(self.vaos3d[i]);
+    gl.glDrawElements(gl.GL_TRIANGLES, self.counts3d[i], gl.GL_UNSIGNED_INT, null);
+}
+
+fn r3d_end(_: *anyopaque) void {
+    gl.glBindVertexArray(0);
+    gl.glDisable(gl.GL_DEPTH_TEST);
 }
 
 fn glTextureFor(handle: engine.TextureHandle) gl.GLuint {
@@ -202,6 +347,7 @@ fn vt_init(ptr: *anyopaque, config: engine.Config) bool {
     _ = c.SDL_GL_SetAttribute(c.SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     _ = c.SDL_GL_SetAttribute(c.SDL_GL_CONTEXT_MINOR_VERSION, 3);
     _ = c.SDL_GL_SetAttribute(c.SDL_GL_CONTEXT_PROFILE_MASK, c.SDL_GL_CONTEXT_PROFILE_CORE);
+    _ = c.SDL_GL_SetAttribute(c.SDL_GL_DEPTH_SIZE, 24);
 
     const title_z: [:0]u8 = self.allocator.dupeZ(u8, config.title) catch return false;
     defer self.allocator.free(title_z);
@@ -235,6 +381,8 @@ fn vt_init(ptr: *anyopaque, config: engine.Config) bool {
     gl.glEnableVertexAttribArray(1);
     gl.glVertexAttribPointer(1, 2, gl.GL_FLOAT, gl.GL_FALSE, @sizeOf(Vertex), @ptrFromInt(@sizeOf([2]f32)));
 
+    self.r3d_ok = init3d(self);
+
     self.logical_w = config.width;
     self.logical_h = config.height;
     self.running = true;
@@ -253,6 +401,13 @@ fn vt_shutdown(ptr: *anyopaque) void {
     if (self.program != 0) gl.glDeleteProgram(self.program);
     if (self.vbo != 0) gl.glDeleteBuffers(1, &self.vbo);
     if (self.vao != 0) gl.glDeleteVertexArrays(1, &self.vao);
+    if (self.prog3d != 0) gl.glDeleteProgram(self.prog3d);
+    var i: usize = 0;
+    while (i < 3) : (i += 1) {
+        if (self.vbos3d[i] != 0) gl.glDeleteBuffers(1, &self.vbos3d[i]);
+        if (self.ebos3d[i] != 0) gl.glDeleteBuffers(1, &self.ebos3d[i]);
+        if (self.vaos3d[i] != 0) gl.glDeleteVertexArrays(1, &self.vaos3d[i]);
+    }
     if (self.context != null) {
         _ = c.SDL_GL_DeleteContext(self.context);
         self.context = null;

@@ -11,6 +11,8 @@ test {
     _ = @import("../core/math/vec2.zig");
     _ = @import("../core/math/vec3.zig");
     _ = @import("../core/math/mat4.zig");
+    _ = @import("../core/3d/mesh.zig");
+    _ = @import("../core/3d/camera.zig");
     _ = @import("../core/system/random.zig");
     _ = @import("../core/system/localization.zig");
     _ = @import("../core/system/save.zig");

@@ -8,6 +8,14 @@ All notable changes to Neko are documented here. The format follows
 
 ### Added
 
+- **3D rendering (M1)**: the `sdl2-opengl` backend now has a depth-tested 3D
+  pipeline (MVP transform + one directional light, back-face culling off), with
+  built-in `cube`, `quad` and `plane` meshes. Core: `neko.mesh3d`,
+  `neko.Camera`, `neko.render3d` and an optional 3D block in the backend
+  contract (`neko.Render3dVTable`); other backends leave it `null` and keep
+  working. Python: a new `ursina` package (`Ursina`, `Entity`, `camera`,
+  `color`, `held_keys`, `time.dt`, …) and `bindings/python/ursina_demo.py`
+  (a spinning lit cube). Build it with `-Dbackend=sdl2-opengl`.
 - **3D math foundation**: `neko.Vec3` and `neko.Mat4` (column-major, OpenGL
   layout) with translations, rotations, `lookAt`, GL/Vulkan perspective and
   transforms. `neko.math` now also re-exports `Vec3`/`Mat4`. This is the base

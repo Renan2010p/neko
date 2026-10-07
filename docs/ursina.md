@@ -136,7 +136,7 @@ stays ergonomic in Python — same split as the pygame layer.
 | Phase | Deliverable | Status |
 |-------|-------------|--------|
 | **M0** | 3D math: `Vec3`, `Vec4`, `Quat`, `Mat3`, `Mat4`, camera matrices | Vec3 + Mat4 done; Vec4/Quat/Mat3 next |
-| **M1** | Mesh (cube/quad/plane) + a depth-tested 3D pipeline in the OpenGL backend + `_neko3d` API; a spinning cube | next |
+| **M1** | Mesh (cube/quad/plane) + a depth-tested 3D pipeline in the OpenGL backend + `_neko3d` API; a spinning cube | done (`sdl2-opengl`, `ursina_demo.py`) |
 | **M2** | `Entity` transform hierarchy, `scene`, global `update`/`input`, `time.dt`, `held_keys` | — |
 | **M3** | Colors, textures, unlit + one-light shaders, `Sky` | — |
 | **M4** | Colliders + `raycast`/`boxcast`, `origin`, `look_at` | — |

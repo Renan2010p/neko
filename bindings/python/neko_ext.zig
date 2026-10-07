@@ -173,6 +173,86 @@ fn pyPresent(_: [*c]c.PyObject, args: [*c]c.PyObject) callconv(.c) [*c]c.PyObjec
     return pyNone();
 }
 
+// ── 3D renderer (M1) ─────────────────────────────────────────────────────────
+
+/// render3d_supported() -> bool
+fn pyRender3dSupported(_: [*c]c.PyObject, _: [*c]c.PyObject) callconv(.c) [*c]c.PyObject {
+    return c.PyBool_FromLong(if (neko.render3d.supported()) 1 else 0);
+}
+
+/// render3d_begin(px, py, pz, rx, ry, rz, fov, near, far) -> None
+fn pyRender3dBegin(_: [*c]c.PyObject, args: [*c]c.PyObject) callconv(.c) [*c]c.PyObject {
+    var px: f32 = 0;
+    var py: f32 = 0;
+    var pz: f32 = 0;
+    var rx: f32 = 0;
+    var ry: f32 = 0;
+    var rz: f32 = 0;
+    var fov: f32 = 40;
+    var near: f32 = 0.1;
+    var far: f32 = 1000;
+    if (c.PyArg_ParseTuple(args, "fffffffff", &px, &py, &pz, &rx, &ry, &rz, &fov, &near, &far) == 0) return null;
+
+    var cam: neko.Camera = neko.Camera.init();
+    cam.position = .{ .x = px, .y = py, .z = pz };
+    cam.rotation = .{ .x = rx, .y = ry, .z = rz };
+    cam.fov = fov;
+    cam.near = near;
+    cam.far = far;
+    neko.render3d.begin(cam);
+    return pyNone();
+}
+
+/// render3d_draw(kind, px, py, pz, rx, ry, rz, sx, sy, sz, rgba) -> None
+fn pyRender3dDraw(_: [*c]c.PyObject, args: [*c]c.PyObject) callconv(.c) [*c]c.PyObject {
+    var kind: c_int = 0;
+    var px: f32 = 0;
+    var py: f32 = 0;
+    var pz: f32 = 0;
+    var rx: f32 = 0;
+    var ry: f32 = 0;
+    var rz: f32 = 0;
+    var sx: f32 = 1;
+    var sy: f32 = 1;
+    var sz: f32 = 1;
+    var rgba: c_uint = 0xFFFFFFFF;
+    if (c.PyArg_ParseTuple(args, "ifffffffffI", &kind, &px, &py, &pz, &rx, &ry, &rz, &sx, &sy, &sz, &rgba) == 0) return null;
+
+    const mesh_kind: neko.mesh3d.Kind = switch (kind) {
+        0 => .cube,
+        1 => .quad,
+        2 => .plane,
+        else => return pyNone(),
+    };
+    const model: neko.Mat4 = neko.Mat4.translation(.{ .x = px, .y = py, .z = pz })
+        .mul(neko.Mat4.fromEulerDegrees(.{ .x = rx, .y = ry, .z = rz }))
+        .mul(neko.Mat4.scaling(.{
+        .x = if (sx != 0) sx else 0.001,
+        .y = if (sy != 0) sy else 0.001,
+        .z = if (sz != 0) sz else 0.001,
+    }));
+    const tint: neko.Color = .{
+        .r = @intCast((rgba >> 16) & 0xff),
+        .g = @intCast((rgba >> 8) & 0xff),
+        .b = @intCast(rgba & 0xff),
+        .a = @intCast((rgba >> 24) & 0xff),
+    };
+    neko.render3d.draw(mesh_kind, model, tint);
+    return pyNone();
+}
+
+/// render3d_end() -> None
+fn pyRender3dEnd(_: [*c]c.PyObject, _: [*c]c.PyObject) callconv(.c) [*c]c.PyObject {
+    neko.render3d.end();
+    return pyNone();
+}
+
+/// render3d_present() -> None — swaps the buffers after a 3D frame.
+fn pyRender3dPresent(_: [*c]c.PyObject, _: [*c]c.PyObject) callconv(.c) [*c]c.PyObject {
+    neko.screen.present();
+    return pyNone();
+}
+
 /// set_caption(title) -> None
 fn pySetCaption(_: [*c]c.PyObject, args: [*c]c.PyObject) callconv(.c) [*c]c.PyObject {
     var title: [*c]const u8 = null;
@@ -1481,6 +1561,11 @@ var methods = [_]c.PyMethodDef{
     .{ .ml_name = "frame_end", .ml_meth = pyFrameEnd, .ml_flags = c.METH_NOARGS, .ml_doc = "frame_end() -> None" },
     .{ .ml_name = "get_events", .ml_meth = pyGetEvents, .ml_flags = c.METH_NOARGS, .ml_doc = "get_events() -> list" },
     .{ .ml_name = "key_state", .ml_meth = pyKeyState, .ml_flags = c.METH_NOARGS, .ml_doc = "key_state() -> list[int]" },
+    .{ .ml_name = "render3d_supported", .ml_meth = pyRender3dSupported, .ml_flags = c.METH_NOARGS, .ml_doc = "render3d_supported() -> bool" },
+    .{ .ml_name = "render3d_begin", .ml_meth = pyRender3dBegin, .ml_flags = c.METH_VARARGS, .ml_doc = "render3d_begin(px,py,pz,rx,ry,rz,fov,near,far) -> None" },
+    .{ .ml_name = "render3d_draw", .ml_meth = pyRender3dDraw, .ml_flags = c.METH_VARARGS, .ml_doc = "render3d_draw(kind,px,py,pz,rx,ry,rz,sx,sy,sz,rgba) -> None" },
+    .{ .ml_name = "render3d_end", .ml_meth = pyRender3dEnd, .ml_flags = c.METH_NOARGS, .ml_doc = "render3d_end() -> None" },
+    .{ .ml_name = "render3d_present", .ml_meth = pyRender3dPresent, .ml_flags = c.METH_NOARGS, .ml_doc = "render3d_present() -> None" },
     .{ .ml_name = "fill", .ml_meth = pyFill, .ml_flags = c.METH_VARARGS, .ml_doc = "fill(buf, w, h, rgba) -> None" },
     .{ .ml_name = "fill_rect", .ml_meth = pyFillRect, .ml_flags = c.METH_VARARGS, .ml_doc = "fill_rect(...) -> None" },
     .{ .ml_name = "blit", .ml_meth = pyBlit, .ml_flags = c.METH_VARARGS, .ml_doc = "blit(...) -> None" },

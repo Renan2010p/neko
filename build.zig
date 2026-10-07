@@ -196,9 +196,29 @@ fn add_python(
         .{ .custom = "python" },
         "demo.py",
     );
+    // The Ursina 3D layer: its own copy of the extension plus the pure-Python
+    // `ursina` package and a demo.
+    const install_ursina_lib: *Builder.Step.InstallFile = b.addInstallFileWithDir(
+        ext.getEmittedBin(),
+        .{ .custom = "python/ursina" },
+        "_neko.so",
+    );
+    const install_ursina_pkg: *Builder.Step.InstallDir = b.addInstallDirectory(.{
+        .source_dir = b.path("bindings/python/ursina"),
+        .install_dir = .{ .custom = "python" },
+        .install_subdir = "ursina",
+    });
+    const install_ursina_demo: *Builder.Step.InstallFile = b.addInstallFileWithDir(
+        b.path("bindings/python/ursina_demo.py"),
+        .{ .custom = "python" },
+        "ursina_demo.py",
+    );
     step.dependOn(&install_lib.step);
     step.dependOn(&install_pkg.step);
     step.dependOn(&install_demo.step);
+    step.dependOn(&install_ursina_lib.step);
+    step.dependOn(&install_ursina_pkg.step);
+    step.dependOn(&install_ursina_demo.step);
 
     // `zig build python-demo` runs it against the freshly built engine.
     const demo: *Builder.Step.Run = b.addSystemCommand(&.{ "python3", "demo.py" });

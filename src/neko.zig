@@ -206,6 +206,8 @@ pub const text: type = @import("core/graphics/text.zig");
 pub const sprite: type = @import("core/graphics/sprite.zig");
 pub const effect: type = @import("core/graphics/effect.zig");
 pub const render: type = @import("core/graphics/render.zig");
+pub const render3d: type = @import("core/graphics/render3d.zig");
+pub const Render3dVTable: type = @import("core/base/render3d.zig").VTable;
 
 // Audio.
 pub const sound: type = @import("core/audio/sound.zig");
@@ -215,6 +217,11 @@ pub const math: type = @import("core/math.zig");
 pub const Vec2: type = math.Vec2;
 pub const Vec3: type = math.Vec3;
 pub const Mat4: type = math.Mat4;
+
+// 3D.
+pub const camera: type = @import("core/3d/camera.zig");
+pub const Camera: type = camera.Camera;
+pub const mesh3d: type = @import("core/3d/mesh.zig");
 
 // Scenes: a tree of `Node`s whose root is a `Scene` (Godot-style).
 pub const scene: type = @import("core/scene/scene.zig");
