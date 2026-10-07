@@ -10,6 +10,7 @@ Start here:
 |----------|----------------|
 | [como-funciona.md](como-funciona.md) | **explicação em português**: como a engine funciona por dentro |
 | [godot.md](godot.md) | Godot → Neko mapping (code-first scenes, nodes, scripts) |
+| [ursina.md](ursina.md) | Ursina → Neko mapping and the 3D roadmap |
 | [getting-started.md](getting-started.md) | install, wire the dependency, first program |
 | [architecture.md](architecture.md) | how the engine is layered and built |
 | [backends.md](backends.md) | write your own backend (the plugin contract) |

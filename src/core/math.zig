@@ -18,9 +18,13 @@
 
 const scalar: type = @import("math/scalar.zig");
 const vec2: type = @import("math/vec2.zig");
+const vec3: type = @import("math/vec3.zig");
+const mat4: type = @import("math/mat4.zig");
 
 // Types.
 pub const Vec2: type = vec2.Vec2;
+pub const Vec3: type = vec3.Vec3;
+pub const Mat4: type = mat4.Mat4;
 
 // Constants.
 pub const rad_to_deg: f32 = scalar.rad_to_deg;

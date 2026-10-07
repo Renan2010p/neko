@@ -8,6 +8,11 @@ All notable changes to Neko are documented here. The format follows
 
 ### Added
 
+- **3D math foundation**: `neko.Vec3` and `neko.Mat4` (column-major, OpenGL
+  layout) with translations, rotations, `lookAt`, GL/Vulkan perspective and
+  transforms. `neko.math` now also re-exports `Vec3`/`Mat4`. This is the base
+  for the 3D work described in [`docs/ursina.md`](docs/ursina.md).
+
 - **Pluggable backend plugins**: backends are registered in
   `build/backends.zig`; adding one no longer touches `build.zig`. `zig build
   backends` lists them and `-Dbackend=<name>` selects one.

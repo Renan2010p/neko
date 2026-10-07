@@ -213,6 +213,8 @@ pub const sound: type = @import("core/audio/sound.zig");
 // Math.
 pub const math: type = @import("core/math.zig");
 pub const Vec2: type = math.Vec2;
+pub const Vec3: type = math.Vec3;
+pub const Mat4: type = math.Mat4;
 
 // Scenes: a tree of `Node`s whose root is a `Scene` (Godot-style).
 pub const scene: type = @import("core/scene/scene.zig");
