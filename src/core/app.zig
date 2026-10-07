@@ -26,8 +26,7 @@
 //! ## The structured one: a game type
 //!
 //! If you prefer methods over globals, declare a struct with any of `start`,
-//! `event`, `update(self, dt)`, `draw` and call `run` / `runOptions`. See the
-//! `examples/app.zig` example.
+//! `event`, `update(self, dt)`, `draw` and call `run` / `runOptions`.
 
 const std: type = @import("std");
 const types: type = @import("types.zig");

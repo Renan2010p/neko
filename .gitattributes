@@ -1,0 +1,14 @@
+# Normalise line endings for text, keep binaries untouched.
+* text=auto eol=lf
+
+*.zig   text
+*.md    text
+*.zon   text
+*.py    text
+*.yml   text
+*.yaml  text
+
+*.png   binary
+*.ppm   binary
+*.ttf   binary
+*.so    binary

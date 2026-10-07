@@ -110,6 +110,5 @@ Then wire it in `build.zig` (`build_my_device` → `neko_backend` module importi
 ## Testing portability
 
 The unit tests (`zig build test`) import only backend-free core modules, so
-they run anywhere. The examples exercise the full core against the SDL2
-backend. To keep the core honest, avoid importing `neko_backend` outside
-`src/platform.zig`.
+they run anywhere. To keep the core honest, avoid importing `neko_backend`
+outside `src/platform.zig`.

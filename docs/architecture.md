@@ -103,9 +103,8 @@ From the engine repository:
 | Command | Effect |
 |---------|--------|
 | `zig build` | build the modules (no artifacts) |
-| `zig build examples` | compile every example |
-| `zig build run-<name>` | build and run one example |
 | `zig build test` | run the unit tests |
+| `zig build backends` | list the available backends |
 | `zig build docs` | emit the API reference to `zig-out/docs/api` |
 
 ### Backends

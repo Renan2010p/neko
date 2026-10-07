@@ -34,7 +34,6 @@
 //!
 //! Prefer methods over globals? Declare a game struct with optional `start`,
 //! `event`, `update(self, dt)` and `draw`, then let `neko.app.run` drive it.
-//! See `examples/app.zig`.
 //!
 //! ## The manual path
 //!

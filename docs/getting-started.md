@@ -200,6 +200,6 @@ is ready. Text needs a font at `assets/font/font.ttf`.
 
 ## Next steps
 
-- Browse the runnable [examples](examples.md).
+- Read the [backends](backends.md) guide to target another platform.
 - Read the [architecture](architecture.md) to understand the layering.
 - Skim the [recipes](recipes.md) for common patterns.

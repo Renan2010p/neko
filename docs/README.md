@@ -12,8 +12,8 @@ Start here:
 | [godot.md](godot.md) | Godot → Neko mapping (code-first scenes, nodes, scripts) |
 | [getting-started.md](getting-started.md) | install, wire the dependency, first program |
 | [architecture.md](architecture.md) | how the engine is layered and built |
+| [backends.md](backends.md) | write your own backend (the plugin contract) |
 | [api.md](api.md) | namespace-by-namespace reference |
-| [examples.md](examples.md) | the runnable examples under `examples/` |
 | [recipes.md](recipes.md) | common game patterns (movement, timing, scenes, saves) |
 | [portability.md](portability.md) | hosted vs freestanding, and how to add a backend |
 

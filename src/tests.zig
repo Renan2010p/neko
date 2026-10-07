@@ -1,8 +1,8 @@
 //! Unit-test root for `zig build test`.
 //!
 //! Importing a module here runs every `test` block it declares. Only pure,
-//! backend-free modules belong here; anything that needs a window is exercised
-//! by the examples instead.
+//! backend-free modules belong here; anything that needs a window is not
+//! unit-testable.
 
 test {
     _ = @import("core/types.zig");

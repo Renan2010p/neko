@@ -8,8 +8,9 @@
         "build.zig.zon",
         "README.md",
         "LICENSE",
-        "docs",
-        "examples",
         "src",
+        "build",
+        "bindings",
+        "docs",
     },
 }

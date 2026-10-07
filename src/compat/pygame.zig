@@ -86,8 +86,7 @@ pub const Rect: type = struct {
 
     /// Grows (positive) or shrinks (negative) the rect by `dw`/`dh` on both axes.
     pub fn inflate(self: Rect, dw: i32, dh: i32) Rect {
-        return .{ .x = self.x - @divTrunc(dw, 2), .y = self.y - @divTrunc(dh, 2),
-                  .w = self.w + dw, .h = self.h + dh };
+        return .{ .x = self.x - @divTrunc(dw, 2), .y = self.y - @divTrunc(dh, 2), .w = self.w + dw, .h = self.h + dh };
     }
 
     pub fn toNeko(self: Rect) neko.Rect {
@@ -163,8 +162,7 @@ pub const Surface: type = struct {
     pub fn copy(self: *const Surface) !Surface {
         const px: []u32 = try self.allocator.alloc(u32, self.w * self.h);
         @memcpy(px, self.pixels);
-        return .{ .w = self.w, .h = self.h, .pixels = px, .allocator = self.allocator,
-                  .alpha = self.alpha, .has_alpha = self.has_alpha };
+        return .{ .w = self.w, .h = self.h, .pixels = px, .allocator = self.allocator, .alpha = self.alpha, .has_alpha = self.has_alpha };
     }
 
     /// Alpha-composites `src` onto this surface at `dst` (pygame `blit`).

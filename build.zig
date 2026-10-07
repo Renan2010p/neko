@@ -9,34 +9,30 @@
 //!   - `neko_backend`  the selected backend, a stable module name so game code
 //!                     never changes when you switch backends
 //!
-//! A game depends on this package and picks a backend:
+//! ## Backends are plugins
 //!
-//!     b.dependency("neko", .{ .backend = .sdl2 });
+//! A backend lives in `src/platform/<name>/` and is registered in
+//! `build/backends.zig`. Adding one means writing `build/backends/<name>.zig`
+//! (a `plugin: Backend`) and listing it there — `build.zig` never changes. The
+//! selected backend is chosen with `-Dbackend=<name>`:
+//!
+//!     zig build -Dbackend=ps2
 //!
 //! ## Steps
 //!
-//! From this repository you can run:
-//!
-//!   - `zig build`            build the engine modules (no artifacts)
-//!   - `zig build examples`   compile every example under `examples/`
-//!   - `zig build run-hello`  build and run one example (needs a display)
-//!   - `zig build test`       run the unit tests
-//!   - `zig build docs`       emit the API reference to `zig-out/docs/api`
-//!
-//! The examples and the API docs are only built for the SDL2 backend on a
-//! hosted target; the PS2 target is freestanding and has neither a window nor
-//! a browser.
+//!   - `zig build`              build the engine module (no artifacts)
+//!   - `zig build test`         run the unit tests
+//!   - `zig build python`       build the `_neko` CPython extension + pygame
+//!   - `zig build python-demo`  run the bundled pygame demo
+//!   - `zig build docs`         API reference into `zig-out/docs/api`
+//!   - `zig build backends`     list the available backends
 
 const std: type = @import("std");
 const builtin: type = std.builtin;
 const Builder: type = std.Build;
 
-/// Backends this package can provide. Add new ones here.
-pub const Backend: type = enum {
-    sdl2,
-    sdl3,
-    ps2,
-};
+const backend: type = @import("build/backend.zig");
+const backends: type = @import("build/backends.zig");
 
 pub fn build(b: *Builder) void {
     const target: Builder.ResolvedTarget = b.standardTargetOptions(.{});
@@ -48,33 +44,36 @@ pub fn build(b: *Builder) void {
         "Prioritize performance, safety, or binary size",
     ) orelse .ReleaseFast;
 
-    // The consumer (a game) chooses the backend through its dependency
-    // arguments, e.g. `.backend = .sdl2`.
-    const backend: Backend = b.option(
-        Backend,
+    // The backend is a name looked up in the registry (`build/backends.zig`),
+    // so adding one never requires editing this file.
+    const backend_name: []const u8 = b.option(
+        []const u8,
         "backend",
-        "Backend to build: sdl2 (default), sdl3, ps2",
-    ) orelse .sdl2;
+        b.fmt("Backend to build ({s})", .{backends.names}),
+    ) orelse backends.all[0].name;
+    const plugin: backend.Backend = backends.find(backend_name) orelse {
+        std.debug.print("neko: unknown backend '{s}'; available: {s}\n", .{ backend_name, backends.names });
+        @panic("neko: unknown backend");
+    };
 
-    // Optional SDL2 include/lib directories (needed on Windows, where there is
-    // no pkg-config; set them with e.g. `-Dsdl2-include=C:/SDL2/include`).
+    // Optional system-library directories for the SDL2 backend (Windows has no
+    // pkg-config): `-Dsdl2-include=... -Dsdl2-lib=...`.
     const sdl2_include: ?[]const u8 = b.option(
         []const u8,
         "sdl2-include",
-        "Directory containing SDL2.h / SDL2/ (for the SDL2 backend)",
+        "Directory containing SDL2.h / SDL2/ (SDL2 backend only)",
     );
     const sdl2_lib: ?[]const u8 = b.option(
         []const u8,
         "sdl2-lib",
-        "Directory containing the SDL2 import libraries",
+        "Directory containing the SDL2 import libraries (SDL2 backend only)",
     );
 
-    // ── Engine module ────────────────────────────────────────────────────
-    // Always built. Game code imports this as `neko`.
-    // `link_libc` only makes sense on hosted targets; the PS2 is freestanding
-    // and links the PS2SDK libc from C instead.
+    // A freestanding target (the PS2) has no window, no test runner and no
+    // browser, so the developer steps are hosted-only.
     const hosted: bool = target.result.os.tag != .freestanding;
 
+    // ── Engine module ────────────────────────────────────────────────────
     const neko: *Builder.Module = b.addModule("neko", .{
         .root_source_file = b.path("src/neko.zig"),
         .target = target,
@@ -83,8 +82,7 @@ pub fn build(b: *Builder) void {
     });
 
     // ── pygame compatibility module ──────────────────────────────────────
-    // A pygame-shaped software layer (Surface/draw/transform/display) built
-    // only on neko's public API. Games import it as `neko_pygame`.
+    // A pygame-shaped software layer built only on neko's public API.
     const pygame: *Builder.Module = b.addModule("neko_pygame", .{
         .root_source_file = b.path("src/compat/pygame.zig"),
         .target = target,
@@ -94,180 +92,31 @@ pub fn build(b: *Builder) void {
     });
 
     // ── Backend module ───────────────────────────────────────────────────
-    // Published under the stable name `neko_backend`, so a game imports the
-    // same module no matter which backend was selected.
-    const backend_module: *Builder.Module = switch (backend) {
-        .sdl2 => build_sdl2(b, neko, target, optimize, sdl2_include, sdl2_lib),
-        .sdl3 => @panic("neko: the SDL3 backend is not implemented yet"),
-        .ps2 => build_ps2(b, neko, target, optimize),
+    // Published under the stable name `neko_backend`.
+    const ctx: backend.Context = .{
+        .b = b,
+        .neko = neko,
+        .target = target,
+        .optimize = optimize,
+        .sdl2_include = sdl2_include,
+        .sdl2_lib = sdl2_lib,
     };
+    const backend_module: *Builder.Module = plugin.build(ctx);
 
-    // The engine's `screen` module instantiates the selected backend, so the
-    // engine module imports the backend too. Cyclical module imports are
-    // allowed in Zig.
+    // The engine's `screen` module instantiates the backend; cyclical module
+    // imports are allowed in Zig.
     neko.addImport("neko_backend", backend_module);
 
     // ── Developer steps ──────────────────────────────────────────────────
-    // Meaningful only on a hosted target: a freestanding build has no window
-    // and cannot run a test executable, and the API docs need a hosted object.
     if (hosted) {
-        add_examples(b, neko, pygame, backend, target, optimize);
-        add_tests(b, target, optimize);
+        add_tests(b, target, optimize, plugin);
         add_docs(b, neko);
-        add_python(b, neko, pygame, target, optimize, sdl2_include, sdl2_lib);
-    }
-}
-
-// ── Backend wiring ───────────────────────────────────────────────────────────
-
-/// Builds the SDL2 backend and publishes it as `neko_backend`.
-fn build_sdl2(
-    b: *Builder,
-    neko: *Builder.Module,
-    target: Builder.ResolvedTarget,
-    optimize: builtin.OptimizeMode,
-    sdl2_include: ?[]const u8,
-    sdl2_lib: ?[]const u8,
-) *Builder.Module {
-    const c_translate: *Builder.Step.TranslateC = b.addTranslateC(.{
-        .root_source_file = b.path("src/platform/sdl2/SDL2.h"),
-        .optimize = optimize,
-        .target = target,
-        .link_libc = true,
-    });
-    if (sdl2_include) |inc| c_translate.addIncludePath(.{ .cwd_relative = inc });
-    c_translate.linkSystemLibrary("sdl2", .{});
-    c_translate.linkSystemLibrary("SDL2_ttf", .{});
-    c_translate.linkSystemLibrary("SDL2_image", .{});
-    c_translate.linkSystemLibrary("SDL2_mixer", .{});
-
-    const c_module: *Builder.Module = c_translate.createModule();
-
-    const backend: *Builder.Module = b.addModule("neko_backend", .{
-        .root_source_file = b.path("src/platform/sdl2/sdl2.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-        .imports = &.{
-            .{ .name = "c", .module = c_module },
-            .{ .name = "neko", .module = neko },
-        },
-    });
-    backend.linkSystemLibrary("sdl2", .{});
-    backend.linkSystemLibrary("SDL2_ttf", .{});
-    backend.linkSystemLibrary("SDL2_image", .{});
-    backend.linkSystemLibrary("SDL2_mixer", .{});
-    if (sdl2_include) |inc| backend.addIncludePath(.{ .cwd_relative = inc });
-    if (sdl2_lib) |lib| backend.addLibraryPath(.{ .cwd_relative = lib });
-
-    return backend;
-}
-
-/// Builds the PS2 backend (gsKit + pad) and publishes it as `neko_backend`.
-///
-/// Nothing is linked here: the target is freestanding, so the game is compiled
-/// with Zig's C backend (`-ofmt=c`) and the emitted C is linked by the PS2DEV
-/// toolchain (`mips64r5900el-ps2-elf-gcc`) against gsKit and the PS2SDK. This
-/// function only wires the modules together so `neko.screen` finds the backend.
-fn build_ps2(
-    b: *Builder,
-    neko: *Builder.Module,
-    target: Builder.ResolvedTarget,
-    optimize: builtin.OptimizeMode,
-) *Builder.Module {
-    return b.addModule("neko_backend", .{
-        .root_source_file = b.path("src/platform/ps2/ps2.zig"),
-        .target = target,
-        .optimize = optimize,
-        .imports = &.{
-            .{ .name = "neko", .module = neko },
-        },
-    });
-}
-
-// ── Examples ─────────────────────────────────────────────────────────────────
-
-const Example: type = struct {
-    /// Step/file base name (`examples/<name>.zig`).
-    name: []const u8,
-    /// One-line description shown in `zig build --help` and the docs.
-    desc: []const u8,
-};
-
-/// Every example is a standalone `pub fn main(init: std.process.Init)`.
-const examples: [16]Example = [_]Example{
-    .{ .name = "hello", .desc = "least boilerplate: neko.run + frame callback" },
-    .{ .name = "app", .desc = "the high-level neko.app runner" },
-    .{ .name = "window", .desc = "an explicit Window object + switch(event)" },
-    .{ .name = "scenes", .desc = "a window with switchable scenes (switch_to)" },
-    .{ .name = "script", .desc = "attach a plain object to the scene as a node" },
-    .{ .name = "splash", .desc = "the NEKO boot splash (asset-free)" },
-    .{ .name = "shapes", .desc = "draw primitives and text" },
-    .{ .name = "input", .desc = "keyboard, mouse and window events" },
-    .{ .name = "sprites", .desc = "named sprites, placeholders and a widget" },
-    .{ .name = "scene_tree", .desc = "a Godot-style node tree" },
-    .{ .name = "audio", .desc = "load and play a sound" },
-    .{ .name = "save", .desc = "binary serialization and save files" },
-    .{ .name = "pygame_compat", .desc = "a pygame-shaped Surface/draw layer on Neko" },
-    .{ .name = "pygame_screenshot", .desc = "render the compat scene to a PPM (headless)" },
-    .{ .name = "vesper_neko", .desc = "Vesper's Nara surface drawn with Neko" },
-    .{ .name = "vesper_neko_shot", .desc = "render the Vesper scene to a PPM (headless)" },
-};
-
-/// Adds the `examples` step (build all) and one `run-<name>` step per example.
-fn add_examples(
-    b: *Builder,
-    neko: *Builder.Module,
-    pygame: *Builder.Module,
-    backend: Backend,
-    target: Builder.ResolvedTarget,
-    optimize: builtin.OptimizeMode,
-) void {
-    const step: *Builder.Step = b.step("examples", "Build every example under examples/");
-
-    // The only working hosted backend for examples today.
-    if (backend != .sdl2) {
-        return;
+        add_python(b, neko, pygame, target, optimize, sdl2_include, sdl2_lib, plugin);
     }
 
-    for (examples) |ex| {
-        const module: *Builder.Module = b.createModule(.{
-            .root_source_file = b.path(b.fmt("examples/{s}.zig", .{ex.name})),
-            .target = target,
-            .optimize = optimize,
-            .link_libc = true,
-            .imports = &.{
-                .{ .name = "neko", .module = neko },
-                .{ .name = "neko_pygame", .module = pygame },
-            },
-        });
-        link_sdl2(module);
-
-        const exe: *Builder.Step.Compile = b.addExecutable(.{
-            .name = ex.name,
-            .root_module = module,
-        });
-
-        step.dependOn(&exe.step);
-
-        // `zig build run-<name>` builds and runs that example.
-        const run: *Builder.Step.Run = b.addRunArtifact(exe);
-        if (b.args) |args| run.addArgs(args);
-        const run_step: *Builder.Step = b.step(
-            b.fmt("run-{s}", .{ex.name}),
-            b.fmt("Run the '{s}' example ({s})", .{ ex.name, ex.desc }),
-        );
-        run_step.dependOn(&run.step);
-    }
-}
-
-/// Links the SDL2 family against a module. The backend module already declares
-/// these, but naming them here keeps the example executables self-contained.
-fn link_sdl2(module: *Builder.Module) void {
-    module.linkSystemLibrary("sdl2", .{});
-    module.linkSystemLibrary("SDL2_ttf", .{});
-    module.linkSystemLibrary("SDL2_image", .{});
-    module.linkSystemLibrary("SDL2_mixer", .{});
+    const list: *Builder.Step.Run = b.addSystemCommand(&.{ "echo", backends.names });
+    const list_step: *Builder.Step = b.step("backends", "List the available backends");
+    list_step.dependOn(&list.step);
 }
 
 // ── Tests ────────────────────────────────────────────────────────────────────
@@ -277,6 +126,7 @@ fn add_tests(
     b: *Builder,
     target: Builder.ResolvedTarget,
     optimize: builtin.OptimizeMode,
+    plugin: backend.Backend,
 ) void {
     const module: *Builder.Module = b.createModule(.{
         .root_source_file = b.path("src/tests.zig"),
@@ -284,6 +134,7 @@ fn add_tests(
         .optimize = optimize,
         .link_libc = true,
     });
+    plugin.link(module);
 
     const tests: *Builder.Step.Compile = b.addTest(.{ .root_module = module });
     const run_tests: *Builder.Step.Run = b.addRunArtifact(tests);
@@ -295,8 +146,8 @@ fn add_tests(
 // ── Python bindings ──────────────────────────────────────────────────────────
 
 /// Adds `zig build python`: the CPython extension `_neko` (in Zig) plus the
-/// pure-Python `pygame` package, installed under `zig-out/python/`. Put that
-/// directory on `PYTHONPATH` to run pygame games on Neko.
+/// pure-Python `pygame` package under `zig-out/python/`. Put that directory on
+/// `PYTHONPATH` to run pygame games on Neko.
 fn add_python(
     b: *Builder,
     neko: *Builder.Module,
@@ -305,6 +156,7 @@ fn add_python(
     optimize: builtin.OptimizeMode,
     sdl2_include: ?[]const u8,
     sdl2_lib: ?[]const u8,
+    plugin: backend.Backend,
 ) void {
     const python_include: []const u8 = b.option(
         []const u8,
@@ -331,9 +183,9 @@ fn add_python(
         .name = "_neko",
         .root_module = ext_module,
     });
-    link_sdl2(ext.root_module);
+    plugin.link(ext.root_module);
     // A Python extension leaves the CPython symbols unresolved; the running
-    // interpreter provides them when the module is imported.
+    // interpreter provides them at import time.
     ext.linker_allow_shlib_undefined = true;
 
     const step: *Builder.Step = b.step("python", "Build the pygame-compatible Python extension");

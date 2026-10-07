@@ -1,0 +1,64 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  zig:
+    name: build, test and format (zig)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Neko targets Zig 0.16.0 (0.17.0 removed std.Build helpers we use), so
+      # fetch that exact version straight from ziglang.org.
+      - name: Install Zig 0.16.0
+        run: |
+          curl -fsSL -o zig.tar.xz "https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz"
+          tar xf zig.tar.xz
+          echo "$PWD/zig-x86_64-linux-0.16.0" >> "$GITHUB_PATH"
+
+      - name: Install SDL2
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libsdl2-mixer-dev
+
+      - name: Formatting
+        run: zig fmt --check build.zig build src bindings
+
+      - name: Build
+        run: zig build
+
+      - name: Backends
+        run: zig build backends
+
+      - name: Unit tests
+        run: zig build test
+
+  python:
+    name: build the Python extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install Zig 0.16.0
+        run: |
+          curl -fsSL -o zig.tar.xz "https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz"
+          tar xf zig.tar.xz
+          echo "$PWD/zig-x86_64-linux-0.16.0" >> "$GITHUB_PATH"
+
+      - name: Install SDL2
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libsdl2-mixer-dev
+
+      - name: Build the extension
+        run: zig build python
+
+      - name: Import smoke test
+        run: PYTHONPATH=$PWD/zig-out/python python -c "import pygame._neko as n; print(n.get_ticks())"
