@@ -84,7 +84,7 @@ pub fn build(b: *Builder) void {
     // ── pygame compatibility module ──────────────────────────────────────
     // A pygame-shaped software layer built only on neko's public API.
     const pygame: *Builder.Module = b.addModule("neko_pygame", .{
-        .root_source_file = b.path("src/compat/pygame.zig"),
+        .root_source_file = b.path("src/compat/pygame/pygame.zig"),
         .target = target,
         .optimize = optimize,
         .link_libc = hosted,

@@ -175,6 +175,8 @@ zig build test -Doptimize=Debug   # also: ReleaseSafe / ReleaseSmall
 src/neko.zig            public namespace root
 src/platform.zig        the backend seam (the only core file that names a backend)
 src/core/               types, dispatch namespaces, scene/state, math, serialization
+src/compat/             compatibility layers (one directory per API)
+src/compat/pygame/      the pygame-shaped layer (Surface/draw/transform/display)
 src/platform/<name>/    one backend per platform (sdl2, ps2)
 build/backends.zig      the backend registry
 build/backends/<name>.zig  build plugin for one backend

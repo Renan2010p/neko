@@ -23,6 +23,11 @@ All notable changes to Neko are documented here. The format follows
 ### Changed
 
 - `zig build` defaults to **ReleaseFast**.
+- **Source layout split into focused modules**: the pygame layer is now
+  `src/compat/pygame/{pygame,pixel,rect,surface,draw,transform,display}.zig`
+  (with `src/compat/compat.zig` as the compat root), and `neko.save` is split
+  into `src/core/system/save/{writer,reader,files}.zig`. Public entry points
+  (`neko_pygame`, `neko.save`) are unchanged.
 - `neko_pygame` draw primitives write pixels directly (no alpha blend on draw),
   matching pygame; blit is SIMD-accelerated.
 - Various render fidelity fixes: solid ellipse rings, real `draw.arc`, thick
