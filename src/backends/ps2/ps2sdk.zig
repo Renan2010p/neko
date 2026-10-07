@@ -10,7 +10,7 @@
 //! link time against the prebuilt PS2SDK archives (`libkernel.a`, `libpad.a`,
 //! `libdebug.a`, …).
 //!
-//! Typical startup (also see `hello.zig`):
+//! Typical startup:
 //!
 //!     _ = ps2sdk.sif.sceSifInitRpc(0);
 //!     _ = ps2sdk.loader.SifLoadModule("rom0:SIO2MAN", 0, "");

@@ -80,7 +80,7 @@
 //! | `neko.platform`      | the backend seam (advanced; backends and tools)     |
 //!
 //! `Backend` is the internal contract a platform implements; only backends
-//! (`src/platform/...`) and the seam (`src/platform.zig`) reference it.
+//! (`src/backends/...`) and the seam (`src/core/platform.zig`) reference it.
 
 const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
@@ -102,7 +102,7 @@ pub const BackendKind: type = types.BackendKind;
 
 /// The backend this engine build was compiled with (chosen in the dependency
 /// arguments, e.g. `.backend = .sdl2`).
-pub const backend_kind: BackendKind = @import("platform.zig").kind;
+pub const backend_kind: BackendKind = @import("core/platform.zig").kind;
 
 // ── Events ───────────────────────────────────────────────────────────────
 
@@ -145,8 +145,8 @@ pub fn allocator() Allocator {
 // ── Platform seam (advanced) ─────────────────────────────────────────────
 
 /// The bridge to the selected backend. Most games never touch this; it exists
-/// for tools and backends. See `src/platform.zig`.
-pub const platform: type = @import("platform.zig");
+/// for tools and backends. See `src/core/platform.zig`.
+pub const platform: type = @import("core/platform.zig");
 
 // ── High-level entry point ───────────────────────────────────────────────
 
@@ -218,3 +218,12 @@ pub const Vec2: type = math.Vec2;
 pub const scene: type = @import("core/scene/scene.zig");
 pub const Scene: type = scene.Scene;
 pub const Script: type = scene.Script;
+
+// ── Tests ────────────────────────────────────────────────────────────────────
+// Pulled in only by `zig build test` (a `test` block is ignored otherwise).
+// The unit tests themselves live next to the code they test; this root also
+// gathers any extra test-only files under `src/test/`.
+
+test {
+    _ = @import("test/root.zig");
+}

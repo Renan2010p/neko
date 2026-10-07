@@ -13,7 +13,7 @@
 //!
 //! The game's build wires this up (when `backend == .ps2`):
 //!
-//!     const entry = neko_dep.path("src/platform/ps2/entry.zig");
+//!     const entry = neko_dep.path("src/backends/ps2/entry.zig");
 //!     const root = b.createModule(.{
 //!         .root_source_file = entry, .target = target, .optimize = optimize,
 //!         .imports = &.{

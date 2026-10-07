@@ -24,13 +24,13 @@ zig build python     # the _neko CPython extension + pygame package
 - Run `zig fmt build.zig build src bindings` before committing. CI checks it.
 - 4-space indentation, snake_case functions, `SomeType` types, `.fields`.
 - Keep `src/core/**` free of OS calls: it may only import the abstract
-  `Backend` (through `src/platform.zig`). Do not import `neko_backend`
+  `Backend` (through `src/core/platform.zig`). Do not import `neko_backend`
   elsewhere.
 - Prefer explicit types on `const`/`var` in the core where it aids clarity.
 
 ## Adding a backend
 
-Backends are plugins: create `src/platform/<name>/`, `build/backends/<name>.zig`
+Backends are plugins: create `src/backends/<name>/`, `build/backends/<name>.zig`
 and register it in `build/backends.zig`. `build.zig` never changes. The full
 contract is in [docs/backends.md](docs/backends.md).
 

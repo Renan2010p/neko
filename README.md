@@ -135,11 +135,11 @@ and roadmap.
 
 ## Backends are plugins
 
-A backend lives in `src/platform/<name>/` and is registered in
+A backend lives in `src/backends/<name>/` and is registered in
 [`build/backends.zig`](build/backends.zig). Adding one is three files — never
 `build.zig`:
 
-1. `src/platform/<name>/<name>.zig` exporting `kind` and `create() Backend`.
+1. `src/backends/<name>/<name>.zig` exporting `kind` and `create() Backend`.
 2. `build/backends/<name>.zig` with a `plugin: Backend` (metadata + how to
    build/link it).
 3. A one-line registration in `build/backends.zig`.
@@ -172,16 +172,17 @@ zig build test -Doptimize=Debug   # also: ReleaseSafe / ReleaseSmall
 ## Layout
 
 ```
-src/neko.zig            public namespace root
-src/platform.zig        the backend seam (the only core file that names a backend)
-src/core/               types, dispatch namespaces, scene/state, math, serialization
-src/compat/             compatibility layers (one directory per API)
-src/compat/pygame/      the pygame-shaped layer (Surface/draw/transform/display)
-src/platform/<name>/    one backend per platform (sdl2, ps2)
-build/backends.zig      the backend registry
+src/neko.zig               public namespace root (the only file at src/ root)
+src/core/                  types, dispatch namespaces, scene/state, math
+src/core/platform.zig      the backend seam (the only core file that names a backend)
+src/compat/                compatibility layers (one directory per API)
+src/compat/pygame/         the pygame-shaped layer (Surface/draw/transform/display)
+src/backends/<name>/       one backend per platform (sdl2, ps2)
+src/test/                  the unit-test root
+build/backends.zig         the backend registry
 build/backends/<name>.zig  build plugin for one backend
-bindings/python/        the CPython `_neko` extension + the `pygame` package
-docs/                   the guide
+bindings/python/           the CPython `_neko` extension + the `pygame` package
+docs/                      the guide
 ```
 
 The core depends only on the abstract `neko.Backend` interface; backends

@@ -11,7 +11,7 @@
 //!
 //! ## Backends are plugins
 //!
-//! A backend lives in `src/platform/<name>/` and is registered in
+//! A backend lives in `src/backends/<name>/` and is registered in
 //! `build/backends.zig`. Adding one means writing `build/backends/<name>.zig`
 //! (a `plugin: Backend`) and listing it there — `build.zig` never changes. The
 //! selected backend is chosen with `-Dbackend=<name>`:
@@ -109,7 +109,7 @@ pub fn build(b: *Builder) void {
 
     // ── Developer steps ──────────────────────────────────────────────────
     if (hosted) {
-        add_tests(b, target, optimize, plugin);
+        add_tests(b, neko);
         add_docs(b, neko);
         add_python(b, neko, pygame, target, optimize, sdl2_include, sdl2_lib, plugin);
     }
@@ -122,21 +122,13 @@ pub fn build(b: *Builder) void {
 // ── Tests ────────────────────────────────────────────────────────────────────
 
 /// Adds `zig build test`, running the unit tests in the core modules.
-fn add_tests(
-    b: *Builder,
-    target: Builder.ResolvedTarget,
-    optimize: builtin.OptimizeMode,
-    plugin: backend.Backend,
-) void {
-    const module: *Builder.Module = b.createModule(.{
-        .root_source_file = b.path("src/tests.zig"),
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
-    });
-    plugin.link(module);
-
-    const tests: *Builder.Step.Compile = b.addTest(.{ .root_module = module });
+///
+/// The test root is the `neko` module itself (`src/neko.zig`, the only file at
+/// `src/`), so the whole engine tree is part of the test compilation; the unit
+/// tests live next to the code they test and `src/test/root.zig` gathers any
+/// extra test-only files.
+fn add_tests(b: *Builder, neko: *Builder.Module) void {
+    const tests: *Builder.Step.Compile = b.addTest(.{ .root_module = neko });
     const run_tests: *Builder.Step.Run = b.addRunArtifact(tests);
 
     const step: *Builder.Step = b.step("test", "Run the unit tests");

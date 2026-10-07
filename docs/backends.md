@@ -9,7 +9,7 @@ into the build as a plugin. Switching backends changes nothing in the core.
 
 Adding a backend means creating three files — `build.zig` never changes:
 
-### 1. `src/platform/<name>/<name>.zig`
+### 1. `src/backends/<name>/<name>.zig`
 
 Implement the platform, exporting exactly two symbols:
 
@@ -25,7 +25,7 @@ pub fn create() engine.Backend {                // one process-wide instance
 
 `create()` returns the handle the core stores; the concrete engine stays inside
 your module. Implement every field of `engine.Backend.VTable` (see
-`src/platform/sdl2/sdl2.zig` for a complete example).
+`src/backends/sdl2/sdl2.zig` for a complete example).
 
 ### 2. `build/backends/<name>.zig`
 
@@ -44,7 +44,7 @@ pub const plugin: backend.Backend = .{
 
 fn build(ctx: backend.Context) *std.Build.Module {
     return ctx.b.addModule("neko_backend", .{
-        .root_source_file = ctx.b.path("src/platform/mybackend/mybackend.zig"),
+        .root_source_file = ctx.b.path("src/backends/mybackend/mybackend.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
         .imports = &.{.{ .name = "neko", .module = ctx.neko }},
@@ -58,7 +58,7 @@ fn link(module: *std.Build.Module) void {
 ```
 
 The module **must** be published under the name `neko_backend` — that is the
-stable import name the core's `src/platform.zig` seam looks up.
+stable import name the core's `src/core/platform.zig` seam looks up.
 
 ### 3. `build/backends.zig`
 

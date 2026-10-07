@@ -82,7 +82,7 @@ pub const Engine = struct {
 
 var instance: Engine = .{};
 
-/// Called by src/platform.zig.
+/// Called by src/core/platform.zig.
 pub fn create() engine.Backend {
     return instance.backend();
 }
@@ -111,4 +111,4 @@ Then wire it in `build.zig` (`build_my_device` → `neko_backend` module importi
 
 The unit tests (`zig build test`) import only backend-free core modules, so
 they run anywhere. To keep the core honest, avoid importing `neko_backend`
-outside `src/platform.zig`.
+outside `src/core/platform.zig`.

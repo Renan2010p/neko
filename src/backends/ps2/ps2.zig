@@ -205,7 +205,7 @@ pub const Engine: type = Ps2Engine;
 /// Process-wide backend instance, with a stable address for the handle.
 var instance: Ps2Engine = .{};
 
-/// Returns the backend as an abstract handle. Called by `src/platform.zig`,
+/// Returns the backend as an abstract handle. Called by `src/core/platform.zig`,
 /// the single core seam that knows this module.
 pub fn create() engine.Backend {
     return instance.backend();

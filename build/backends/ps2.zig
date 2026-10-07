@@ -22,7 +22,7 @@ pub const plugin: backend.Backend = .{
 
 fn build(ctx: backend.Context) *Build.Module {
     return ctx.b.addModule("neko_backend", .{
-        .root_source_file = ctx.b.path("src/platform/ps2/ps2.zig"),
+        .root_source_file = ctx.b.path("src/backends/ps2/ps2.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
         .imports = &.{.{ .name = "neko", .module = ctx.neko }},

@@ -33,10 +33,10 @@ Você nunca fala com SDL. Você fala com `neko.*`.
 No `build.zig` são criados dois módulos:
 
 - `neko` → `src/neko.zig` (o core).
-- `neko_backend` → `src/platform/sdl2/sdl2.zig` **ou** `src/platform/ps2/ps2.zig`,
+- `neko_backend` → `src/backends/sdl2/sdl2.zig` **ou** `src/backends/ps2/ps2.zig`,
   conforme `.backend = .sdl2` / `.ps2`.
 
-O core importa o backend por baixo (em `src/platform.zig`), mas o seu jogo só
+O core importa o backend por baixo (em `src/core/platform.zig`), mas o seu jogo só
 importa `neko`:
 
 ```zig
@@ -81,7 +81,7 @@ neko.draw.rect(rect, cor, true)
   → context.get()                     // ?Backend  (o backend registrado no init)
   → e.draw_rect(rect, cor, true)      // método da interface abstrata
   → vtable.draw_rect(self.ptr, ...)   // salto para o backend
-  → src/platform/sdl2: SDL_SetRenderDrawColor + SDL_RenderFillRect
+  → src/backends/sdl2: SDL_SetRenderDrawColor + SDL_RenderFillRect
 ```
 
 No PS2, esse mesmo `rect()` termina em `gskit.prim.sprite`. O seu jogo não sabe

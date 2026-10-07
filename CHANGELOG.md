@@ -28,6 +28,9 @@ All notable changes to Neko are documented here. The format follows
   (with `src/compat/compat.zig` as the compat root), and `neko.save` is split
   into `src/core/system/save/{writer,reader,files}.zig`. Public entry points
   (`neko_pygame`, `neko.save`) are unchanged.
+- **Repository layout**: backends live in `src/backends/<name>/`, the seam is
+  `src/core/platform.zig`, tests live under `src/test/`, and `src/neko.zig` is
+  the only file at the root of `src/`.
 - `neko_pygame` draw primitives write pixels directly (no alpha blend on draw),
   matching pygame; blit is SIMD-accelerated.
 - Various render fidelity fixes: solid ellipse rings, real `draw.arc`, thick

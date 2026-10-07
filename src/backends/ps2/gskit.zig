@@ -13,7 +13,7 @@
 //!   - `gsKit_prim_sprite_texture`   -> `texture.sprite`
 //!   - `gsKit_fontm_print`           -> `fontm.print`
 //!
-//! Minimal startup (also see `hello.zig`):
+//! Minimal startup:
 //!
 //!     const gs = core.initGlobal();
 //!     const font = fontm.init();

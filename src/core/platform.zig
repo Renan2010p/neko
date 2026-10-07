@@ -4,18 +4,18 @@
 //!
 //!   - `src/core/**` uses only the abstract `Backend` interface (events,
 //!     drawing, textures, text, sound, files) and never touches an OS API.
-//!   - `src/platform/<name>/**` is where the real work happens: SDL2 on the
+//!   - `src/backends/<name>/**` is where the real work happens: SDL2 on the
 //!     desktop, gsKit on the PS2, and so on.
-//!   - this file (`src/platform.zig`) is the single bridge between the two.
-//!     It re-exports the backend kind and hands the core an abstract handle,
-//!     without leaking the concrete `Engine` type.
+//!   - this file (`src/core/platform.zig`) is the single bridge between the
+//!     two. It re-exports the backend kind and hands the core an abstract
+//!     handle, without leaking the concrete `Engine` type.
 //!
 //! The build wires the backend module under the stable import name
 //! `neko_backend`, so a game never sees it. Switching backends changes the
 //! implementation behind `create()` and nothing else in `src/core/**`.
 
-const backend_contract: type = @import("core/backend.zig");
-const types: type = @import("core/types.zig");
+const backend_contract: type = @import("backend.zig");
+const types: type = @import("types.zig");
 
 /// The concrete, build-selected backend module. `neko_backend` is provided by
 /// `build.zig`; the core reaches it only through this file.

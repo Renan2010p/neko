@@ -56,7 +56,7 @@ pub const Engine: type = Sdl2Engine;
 /// handle stays valid for the life of the process.
 var instance: Sdl2Engine = .{};
 
-/// Returns the backend as an abstract handle. Called by `src/platform.zig`,
+/// Returns the backend as an abstract handle. Called by `src/core/platform.zig`,
 /// the single core seam that knows this module.
 pub fn create() engine.Backend {
     return instance.backend();

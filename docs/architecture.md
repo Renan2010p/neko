@@ -15,7 +15,7 @@ interface.
 │    backend.zig  abstract vtable│
 │    context.zig  active backend │
 └───────────────┬───────────────┘
-                │  src/platform.zig  (the only seam)
+                │  src/core/platform.zig  (the only seam)
                 ▼
         backend module "neko_backend"
                 │
@@ -31,8 +31,8 @@ interface.
 |------|----------------|-------------------|
 | `src/neko.zig` | public namespace root | no |
 | `src/core/**` | types, dispatch namespaces, scene/state, math, serialization | **no** |
-| `src/platform.zig` | the single seam that knows `neko_backend` | no (just wiring) |
-| `src/platform/<name>/**` | the actual rendering, audio, input, files | yes |
+| `src/core/platform.zig` | the single seam that knows `neko_backend` | no (just wiring) |
+| `src/backends/<name>/**` | the actual rendering, audio, input, files | yes |
 
 ### `src/core/backend.zig` — the contract
 
@@ -45,7 +45,7 @@ calls it.
 
 ### `src/core/context.zig` — the active backend
 
-When `neko.screen.init(config)` runs, the core asks `src/platform.zig` for a
+When `neko.screen.init(config)` runs, the core asks `src/core/platform.zig` for a
 backend handle and stores it in `context.current`. Every `neko.*` namespace
 looks it up with `context.get()`:
 
@@ -60,7 +60,7 @@ neko.draw.rect(r, c, true)
 `context` also remembers the allocator and the assets directory, both plain
 data. It does **not** hold any OS handle.
 
-### `src/platform.zig` — the seam
+### `src/core/platform.zig` — the seam
 
 This is the only file in the core tree that names the concrete backend module
 (`neko_backend`). It re-exports the backend kind and returns an abstract
@@ -117,7 +117,7 @@ From the engine repository:
 
 ## Adding a backend
 
-1. Create `src/platform/<name>/<name>.zig` with:
+1. Create `src/backends/<name>/<name>.zig` with:
    - a concrete `Engine` struct,
    - `pub const Engine = ...;`, `pub const kind: neko.BackendKind = .<name>;`,
    - `pub fn create() neko.Backend` returning a stable instance,

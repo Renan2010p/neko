@@ -1,7 +1,7 @@
 //! `neko.screen` — the display: startup, window state and presenting.
 //!
 //! The concrete backend is created through the platform seam
-//! (`src/platform.zig`), so game code never names the platform:
+//! (`src/core/platform.zig`), so game code never names the platform:
 //!
 //!     if (!neko.screen.init(config)) return error.InitFailed;
 //!     defer neko.screen.shutdown();
@@ -10,7 +10,7 @@
 
 const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
-const platform: type = @import("../../platform.zig");
+const platform: type = @import("../platform.zig");
 const types: type = @import("../types.zig");
 const context: type = @import("../context.zig");
 const backend: type = @import("../backend.zig");

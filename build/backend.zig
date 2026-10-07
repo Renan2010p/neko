@@ -4,12 +4,12 @@
 //! Build-time backend plugin contract.
 //!
 //! A backend is a self-contained plugin that publishes a Zig module under the
-//! stable import name `neko_backend`. The engine (`src/platform.zig`) reaches
+//! stable import name `neko_backend`. The engine (`src/core/platform.zig`) reaches
 //! it only through that name, so switching backends changes nothing in
 //! `src/core/**`.
 //!
 //! To add a backend:
-//!   1. Implement `src/platform/<name>/<name>.zig`, exporting:
+//!   1. Implement `src/backends/<name>/<name>.zig`, exporting:
 //!        - `pub const kind: neko.BackendKind = .<name>;`
 //!        - `pub fn create() neko.Backend`
 //!   2. Add `build/backends/<name>.zig` with a `plugin: Backend` (see below).

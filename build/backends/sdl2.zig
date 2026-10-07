@@ -20,7 +20,7 @@ fn build(ctx: backend.Context) *Build.Module {
     const b: *Build = ctx.b;
 
     const c_translate: *Build.Step.TranslateC = b.addTranslateC(.{
-        .root_source_file = b.path("src/platform/sdl2/SDL2.h"),
+        .root_source_file = b.path("src/backends/sdl2/SDL2.h"),
         .optimize = ctx.optimize,
         .target = ctx.target,
         .link_libc = true,
@@ -31,7 +31,7 @@ fn build(ctx: backend.Context) *Build.Module {
     const c_module: *Build.Module = c_translate.createModule();
 
     const mod: *Build.Module = b.addModule("neko_backend", .{
-        .root_source_file = b.path("src/platform/sdl2/sdl2.zig"),
+        .root_source_file = b.path("src/backends/sdl2/sdl2.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
         .link_libc = true,
