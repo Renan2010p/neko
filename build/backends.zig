@@ -10,6 +10,7 @@ const sdl2: type = @import("backends/sdl2.zig");
 const sdl2_opengl: type = @import("backends/sdl2_opengl.zig");
 const sdl2_vulkan: type = @import("backends/sdl2_vulkan.zig");
 const ps2: type = @import("backends/ps2.zig");
+const psx: type = @import("backends/psx.zig");
 
 /// Every backend this package can build. The first entry is the default.
 pub const all: []const backend.Backend = &.{
@@ -17,6 +18,7 @@ pub const all: []const backend.Backend = &.{
     sdl2_opengl.plugin,
     sdl2_vulkan.plugin,
     ps2.plugin,
+    psx.plugin,
 };
 
 /// Looks a backend up by its `-Dbackend=<name>` value.

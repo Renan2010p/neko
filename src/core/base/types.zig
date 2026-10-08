@@ -213,6 +213,8 @@ pub const BackendKind: type = enum {
     sdl2_opengl,
     /// SDL2 window + Vulkan presenter (the pygame path).
     sdl2_vulkan,
+    /// PlayStation 1 (pure Zig, freestanding).
+    psx,
 };
 
 /// Everything a backend needs to open a window and run.
