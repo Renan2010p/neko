@@ -167,6 +167,12 @@ const vtable: engine.Backend.VTable = .{
 };
 
 fn vtInit(ptr: *anyopaque, config: types.Config) bool {
+    // Diagnostic: cyan means screen.init() was reached.
+    waitGpu();
+    GP0.* = 0x02FFFF00;
+    GP0.* = 0x00000000;
+    GP0.* = (240 << 16) | 320;
+
     const self = asSelf(ptr);
     self.allocator = config.allocator;
     self.assets_dir = self.allocator.dupe(u8, config.assets_dir) catch &.{};
@@ -384,6 +390,15 @@ fn invoke(result: anytype) void {
 
 /// Builds the `Init` the game expects and calls `main_fn`.
 pub fn run(main_fn: anytype) void {
+    // Diagnostic: magenta means we reached the engine entry.
+    gpuInit();
+    waitGpu();
+    GP0.* = 0x02FF00FF;
+    GP0.* = 0x00000000;
+    GP0.* = (240 << 16) | 320;
+    GP1.* = 0x05000000;
+    GP1.* = 0x03000000;
+
     var fba: std.heap.FixedBufferAllocator = std.heap.FixedBufferAllocator.init(&gpa_buffer);
     const gpa: Allocator = fba.allocator();
     var arena: std.heap.ArenaAllocator = std.heap.ArenaAllocator.init(gpa);
@@ -405,6 +420,10 @@ pub fn run(main_fn: anytype) void {
     } else {
         const P: type = info.params[0].type.?;
         if (P == std.process.Init) {
+            waitGpu();
+            GP0.* = 0x0200FF00; // green: about to enter the game
+            GP0.* = 0x00000000;
+            GP0.* = (240 << 16) | 320;
             invoke(main_fn(init));
         } else if (P == std.process.Init.Minimal) {
             invoke(main_fn(init.minimal));

@@ -5,7 +5,7 @@
  * bounds (cleared by the naked startup), discard DWARF/unwind/host sections.
  */
 
-OUTPUT_FORMAT("elf32-tradlittlemips")
+OUTPUT_ARCH(mips)
 ENTRY(_start)
 
 SECTIONS

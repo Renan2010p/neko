@@ -85,3 +85,113 @@ float sinf(float x) {
 }
 
 float cosf(float x) { return sinf(x + 1.57079633f); }
+
+/* 128-bit integer helpers. On mips1 there is no `__int128`, so Zig's C backend
+ * (zig.h) declares these with the `zig_u128`/`zig_i128` struct ABI:
+ *   struct { uint64_t lo; uint64_t hi; }  (16-byte aligned, little-endian)
+ * We define the same layout and implement the operations with 64/32-bit math. */
+
+typedef struct { unsigned long long lo __attribute__((aligned(16))); unsigned long long hi; } rt_u128;
+typedef struct { unsigned long long lo __attribute__((aligned(16))); signed long long hi; } rt_i128;
+
+typedef unsigned long long rt_u64;
+typedef unsigned int rt_u32;
+
+static rt_u64 rt_mulhi(rt_u64 a, rt_u64 b) {
+    rt_u32 a0 = (rt_u32) a, a1 = (rt_u32) (a >> 32);
+    rt_u32 b0 = (rt_u32) b, b1 = (rt_u32) (b >> 32);
+    rt_u64 p00 = (rt_u64) a0 * b0, p01 = (rt_u64) a0 * b1;
+    rt_u64 p10 = (rt_u64) a1 * b0, p11 = (rt_u64) a1 * b1;
+    rt_u64 mid = (p00 >> 32) + (rt_u32) p01 + (rt_u32) p10;
+    return p11 + (p01 >> 32) + (p10 >> 32) + (mid >> 32);
+}
+
+static rt_u128 rt_shl(rt_u128 v, int s) {
+    rt_u128 r;
+    if (s == 0) return v;
+    if (s >= 64) {
+        r.hi = v.lo << (s - 64);
+        r.lo = 0;
+    } else {
+        r.hi = (v.hi << s) | (v.lo >> (64 - s));
+        r.lo = v.lo << s;
+    }
+    return r;
+}
+
+static int rt_cmp(rt_u128 a, rt_u128 b) {
+    if (a.hi != b.hi) return a.hi < b.hi ? -1 : 1;
+    if (a.lo != b.lo) return a.lo < b.lo ? -1 : 1;
+    return 0;
+}
+
+static rt_u128 rt_sub(rt_u128 a, rt_u128 b) {
+    rt_u128 r;
+    r.lo = a.lo - b.lo;
+    r.hi = a.hi - b.hi - (a.lo < b.lo ? 1 : 0);
+    return r;
+}
+
+rt_i128 __multi3(rt_i128 a, rt_i128 b) {
+    rt_u64 a0 = a.lo, a1 = (rt_u64) a.hi, b0 = b.lo, b1 = (rt_u64) b.hi;
+    rt_u64 lo = a0 * b0;
+    rt_u64 hi = a0 * b1 + a1 * b0 + rt_mulhi(a0, b0);
+    rt_i128 r;
+    r.lo = lo;
+    r.hi = (signed long long) hi;
+    return r;
+}
+
+rt_u128 __udivti3(rt_u128 n, rt_u128 d) {
+    rt_u128 q = { 0, 0 }, r = { 0, 0 };
+    for (int i = 127; i >= 0; i--) {
+        rt_u64 bit = (i >= 64) ? ((n.hi >> (i - 64)) & 1) : ((n.lo >> i) & 1);
+        r = rt_shl(r, 1);
+        r.lo |= bit;
+        if (rt_cmp(r, d) >= 0) {
+            r = rt_sub(r, d);
+            rt_u128 one = { 1, 0 };
+            q.lo |= rt_shl(one, i).lo;
+            q.hi |= rt_shl(one, i).hi;
+        }
+    }
+    return q;
+}
+
+rt_u128 __umodti3(rt_u128 n, rt_u128 d) {
+    rt_u128 r = { 0, 0 };
+    for (int i = 127; i >= 0; i--) {
+        rt_u64 bit = (i >= 64) ? ((n.hi >> (i - 64)) & 1) : ((n.lo >> i) & 1);
+        r = rt_shl(r, 1);
+        r.lo |= bit;
+        if (rt_cmp(r, d) >= 0) r = rt_sub(r, d);
+    }
+    return r;
+}
+
+rt_i128 __divti3(rt_i128 n, rt_i128 d) {
+    rt_u128 un = { n.lo, (rt_u64) n.hi };
+    rt_u128 ud = { d.lo, (rt_u64) d.hi };
+    int neg = (n.hi < 0) != (d.hi < 0);
+    if (n.hi < 0) un = rt_sub((rt_u128){ 0, 0 }, un);
+    if (d.hi < 0) ud = rt_sub((rt_u128){ 0, 0 }, ud);
+    rt_u128 q = __udivti3(un, ud);
+    if (neg) q = rt_sub((rt_u128){ 0, 0 }, q);
+    rt_i128 r;
+    r.lo = q.lo;
+    r.hi = (signed long long) q.hi;
+    return r;
+}
+
+rt_i128 __modti3(rt_i128 n, rt_i128 d) {
+    rt_u128 un = { n.lo, (rt_u64) n.hi };
+    rt_u128 ud = { d.lo, (rt_u64) d.hi };
+    if (n.hi < 0) un = rt_sub((rt_u128){ 0, 0 }, un);
+    if (d.hi < 0) ud = rt_sub((rt_u128){ 0, 0 }, ud);
+    rt_u128 r = __umodti3(un, ud);
+    if (n.hi < 0) r = rt_sub((rt_u128){ 0, 0 }, r);
+    rt_i128 out;
+    out.lo = r.lo;
+    out.hi = (signed long long) r.hi;
+    return out;
+}
