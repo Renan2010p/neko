@@ -16,12 +16,6 @@
 const neko_backend: type = @import("neko_backend");
 const game: type = @import("game");
 
-// Pulls in the vendored compiler-rt (soft-float, libm subset, memcpy/memset)
-// for the FPU-less R3000A.
-comptime {
-    _ = @import("rt");
-}
-
 extern var _bssStart: u8;
 extern var _bssEnd: u8;
 
