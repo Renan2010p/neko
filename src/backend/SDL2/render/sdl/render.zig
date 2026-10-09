@@ -67,7 +67,7 @@ pub fn run(init: std.process.Init, main_fn: anytype) !void {
 }
 
 /// Which backend this module implements. Checked against `Config.backend`.
-pub const kind: engine.BackendKind = .sdl2;
+pub const kind: engine.BackendKind = .{ .name = "sdl2" };
 
 /// The capabilities this backend declares.
 const caps_decl: engine.Capabilities = blk: {

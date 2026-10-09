@@ -77,6 +77,10 @@ All notable changes to Neko are documented here. The format follows
 
 ### Changed
 
+- **Backend kind decoupled from the core**: `neko.BackendKind` is now just a
+  name declared by each backend (`.{ .name = "sdl2" }`) instead of a core enum,
+  so adding a backend no longer edits `src/core/**`. A new
+  `zig build check-targets` cross-compiles the core for 13 CPU/OS targets.
 - **`Config.io` is optional** (`?std.Io`): a freestanding backend needs no
   process I/O, and file operations degrade to null/false when it is absent. The
   core stores only the allocator and the assets directory.

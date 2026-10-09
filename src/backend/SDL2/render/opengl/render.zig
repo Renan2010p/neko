@@ -141,7 +141,7 @@ pub const Engine: type = OpenglEngine;
 var instance: OpenglEngine = .{};
 
 /// Which backend this module implements.
-pub const kind: engine.BackendKind = .sdl2_opengl;
+pub const kind: engine.BackendKind = .{ .name = "sdl2-opengl" };
 
 /// The capabilities this backend declares.
 const caps_decl: engine.Capabilities = blk: {

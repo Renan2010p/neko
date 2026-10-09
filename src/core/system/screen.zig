@@ -22,12 +22,12 @@ const log: type = @import("log.zig");
 pub fn init(config: types.Config) bool {
     context.allocator = config.allocator;
     context.assets_dir = config.assets_dir;
-    log.info("screen.init: backend={s} {d}x{d} assets='{s}'", .{ @tagName(platform.kind), config.width, config.height, config.assets_dir });
+    log.info("screen.init: backend={s} {d}x{d} assets='{s}'", .{ platform.kind.name, config.width, config.height, config.assets_dir });
 
     const handle: backend.Backend = platform.create();
     context.attach(handle);
     const ok: bool = handle.init(config);
-    if (!ok) log.err("screen.init: backend '{s}' failed to start", .{@tagName(platform.kind)});
+    if (!ok) log.err("screen.init: backend '{s}' failed to start", .{platform.kind.name});
     return ok;
 }
 

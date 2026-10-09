@@ -10,7 +10,7 @@
 //!
 //! To add a backend:
 //!   1. Implement `src/backend/<Name>/render/render.zig`, exporting:
-//!        - `pub const kind: neko.BackendKind = .<name>;`
+//!        - `pub const kind: neko.BackendKind = .{ .name = "<name>" };`
 //!        - `pub fn create() neko.Backend`
 //!   2. Add a `build.zig` next to the renderer with a `plugin: Backend`
 //!      (see below), importing this contract.

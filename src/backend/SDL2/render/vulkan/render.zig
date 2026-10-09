@@ -107,7 +107,7 @@ pub const Engine: type = VulkanEngine;
 var instance: VulkanEngine = .{};
 
 /// Which backend this module implements.
-pub const kind: engine.BackendKind = .sdl2_vulkan;
+pub const kind: engine.BackendKind = .{ .name = "sdl2-vulkan" };
 
 /// The capabilities this backend declares.
 const caps_decl: engine.Capabilities = blk: {

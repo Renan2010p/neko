@@ -15,7 +15,7 @@ doc comments.
 | `neko.TextureHandle` / `neko.SoundHandle` | opaque handles |
 | `neko.Event` | tagged union of input/window events |
 | `neko.Config` | startup config for `neko.screen.init` |
-| `neko.BackendKind` | `.sdl2`, `.sdl3`, `.ps2` |
+| `neko.BackendKind` | `.{ .name = "sdl2" }` (the core does not enumerate backends) |
 
 ## `neko.run` (and `neko.quit`)
 

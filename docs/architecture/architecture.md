@@ -172,14 +172,13 @@ the platform layer and the common render helpers are published as named modules
 
 1. Create `src/backend/<Name>/render/render.zig` with:
    - a concrete `Engine` struct and a stable `instance`,
-   - `pub const kind: neko.BackendKind = .<name>;`,
+   - `pub const kind: neko.BackendKind = .{ .name = "<name>" };` (just a name),
    - `pub fn create() neko.Backend` returning the instance handle,
    - the capability functions you support (the rest default to no-ops),
    - a `caps_decl: neko.Capabilities` listing your `neko.Feature`s.
 2. Add a `build.zig` next to the renderer with a `plugin: Backend` (importing
    `src/backend/plugin.zig`) and publish the platform module(s) it needs.
-3. Register it in `src/backend/registry.zig` and add the variant to
-   `types.BackendKind`.
-4. Nothing in `src/core/**` changes.
+3. Register it in `src/backend/registry.zig`.
+4. Nothing in `src/core/**` changes — the core never learns the backend's name.
 
 See [backends.md](backends.md) and [portability.md](portability.md).

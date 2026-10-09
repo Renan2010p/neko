@@ -213,7 +213,7 @@ pub fn create() engine.Backend {
 }
 
 /// Which backend this module implements.
-pub const kind: engine.BackendKind = .ps2;
+pub const kind: engine.BackendKind = .{ .name = "ps2" };
 
 const vtable: engine.Backend.VTable = engine.Backend.VTable{
     .init = vt_init,

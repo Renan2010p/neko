@@ -13,6 +13,8 @@
 - **2D camera** — `neko.Camera2D`, backend-agnostic (it offsets at the core).
 - **Named animation clips** — `neko.scene.Animator` / `neko.Clip`.
 - **Sound object** — `neko.sound.Sound`.
+- **Decoupled backend kind** — the core no longer enumerates backends; a backend
+  declares its own name.
 
 Still proposed: atlas regions, node rotation/scale/z with `Vec2`, a single
 `neko.App` entry, and `neko.ui`.
@@ -43,7 +45,6 @@ Still proposed: atlas regions, node rotation/scale/z with `Vec2`, a single
 | Manual audio channels | `sound.play(handle, loops, channel)` pushes channel bookkeeping onto the game. |
 | Raw input only | Keys/mouse exist, but no named actions, no rebinding, no gamepad. |
 | Naming drift | `keyDown` vs `draw_rect`; `neko.sprite.draw` vs `neko.texture.draw`; comments still say `engine.*`. |
-| `BackendKind` is core | Adding a backend edits `src/core/base/types.zig`, contradicting "adding a backend never touches the core". |
 
 ## Design principles
 
@@ -204,9 +205,8 @@ is unambiguous.
 - `AnimatedSprite` gets a doc-note pointing at `Animator`; no removal yet.
 - `Point` stays for draw calls; nodes move to `Vec2` in a minor release (both
   accepted at first).
-- Add a `@hasDecl`-free, single `BackendKind` extension: move the enum out of
-  core (see [design.md](design.md)) so adding a backend stops touching
-  `src/core`.
+- **Done**: `BackendKind` is no longer a core enum. A backend declares its own
+  name (`.{ .name = "my_backend" }`), so adding one never touches `src/core`.
 
 ## Priority order
 

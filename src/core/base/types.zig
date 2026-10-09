@@ -202,21 +202,19 @@ pub const SoundHandle: type = struct {
     id: u32,
 };
 
-/// Which platform backend to run on. The engine compiles exactly one of
-/// these, chosen in the `neko` dependency argument; it is re-exported as
-/// `neko.backend_kind`.
-pub const BackendKind: type = enum {
-    sdl2,
-    sdl3,
-    ps2,
-    /// SDL2 window + OpenGL presenter (the pygame path).
-    sdl2_opengl,
-    /// SDL2 window + Vulkan presenter (the pygame path).
-    sdl2_vulkan,
-    /// PlayStation 1 (pure Zig, freestanding).
-    psx,
-    /// No OS, no window: the engine loop only (tests, servers, bare metal).
-    headless,
+/// The name of the platform backend this build selected, e.g. `"sdl2"`.
+///
+/// The core does **not** enumerate backends: a backend declares its own name,
+/// so adding one never touches `src/core/**`. Prefer asking
+/// `neko.Backend.supports(.feature)` over comparing names.
+pub const BackendKind: type = struct {
+    /// The `-Dbackend=<name>` value (`"sdl2"`, `"ps2"`, `"headless"`, …).
+    name: []const u8,
+
+    /// True when this backend's name equals `other`.
+    pub fn eql(self: BackendKind, other: []const u8) bool {
+        return std.mem.eql(u8, self.name, other);
+    }
 };
 
 /// Everything a backend needs to open a window and run.

@@ -93,7 +93,7 @@ pub fn create() engine.Backend {
     return instance.backend();
 }
 
-pub const kind: engine.BackendKind = .my_device;
+pub const kind: engine.BackendKind = .{ .name = "my_device" };
 
 const caps_decl: engine.Capabilities = blk: {
     var set: engine.Capabilities = engine.Capabilities.initEmpty();
@@ -111,8 +111,8 @@ const vtable: engine.Backend.VTable = .{
 The file lives at `src/backend/MyBackend/render/render.zig`. Then add a
 `plugin: Backend` (a `build.zig` next to the renderer, importing
 `src/backend/plugin.zig`) and register it in `src/backend/registry.zig` — never
-`build.zig`. Add `.my_device` to `types.BackendKind`. Nothing in `src/core/**`
-changes.
+`build.zig`. The backend's `kind` is just its name (`.{ .name = "my_device" }`),
+so **nothing in `src/core/**` changes**.
 
 ## Current status
 

@@ -37,7 +37,7 @@ the capabilities it supports:
 ```zig
 const engine: type = @import("neko");
 
-pub const kind: engine.BackendKind = .<name>; // add it to types.BackendKind
+pub const kind: engine.BackendKind = .{ .name = "<name>" }; // any name; the core does not enumerate them
 
 pub fn create() engine.Backend { // one process-wide instance
     return instance.backend();

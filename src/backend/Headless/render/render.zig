@@ -34,7 +34,7 @@ pub const Engine: type = HeadlessEngine;
 var instance: HeadlessEngine = .{};
 
 /// Which backend this module implements.
-pub const kind: engine.BackendKind = .headless;
+pub const kind: engine.BackendKind = .{ .name = "headless" };
 
 /// The capabilities this backend declares. It provides only the loop.
 const caps_decl: engine.Capabilities = engine.Capabilities.initEmpty();

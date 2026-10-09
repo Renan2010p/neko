@@ -100,7 +100,7 @@ const PsxEngine: type = struct {
 pub const Engine: type = PsxEngine;
 var instance: PsxEngine = .{};
 
-pub const kind: engine.BackendKind = .psx;
+pub const kind: engine.BackendKind = .{ .name = "psx" };
 
 pub fn create() engine.Backend {
     return instance.backend();
