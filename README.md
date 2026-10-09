@@ -194,6 +194,7 @@ From this repository:
 zig build            # build the modules
 zig build test       # run the unit tests (+ the freestanding guard)
 zig build check-freestanding  # fail if src/core touches an OS API
+zig build check-targets       # cross-compile the core for many CPU/OS targets
 zig build backends   # list the available backends
 zig build docs       # write the API reference to zig-out/docs/api
 zig build python     # build the pygame-compatible Python extension

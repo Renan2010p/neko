@@ -114,6 +114,7 @@ pub fn build(b: *Builder) void {
         add_tests(b, neko, freestanding_check);
         add_docs(b, neko);
         add_python(b, neko, pygame, target, optimize, sdl2_include, sdl2_lib, plugin);
+        _ = add_target_check(b, optimize);
     }
 
     const list: *Builder.Step.Run = b.addSystemCommand(&.{ "echo", backends.names });
@@ -136,6 +137,64 @@ fn add_tests(b: *Builder, neko: *Builder.Module, extra: *Builder.Step) void {
     const step: *Builder.Step = b.step("test", "Run the unit tests");
     step.dependOn(&run_tests.step);
     step.dependOn(extra);
+}
+
+// ── Portability guard: cross-compile the core for many targets ───────────────
+
+/// Adds `zig build check-targets`: compiles the `neko` core plus the `headless`
+/// backend for a matrix of targets (hosted, embedded, big-endian, wasm). It
+/// never links or runs, so no SDK is needed; it just proves the core has no
+/// target-specific assumptions. A new backend or core change that breaks a
+/// target fails here.
+fn add_target_check(b: *Builder, optimize: builtin.OptimizeMode) *Builder.Step {
+    const targets: []const []const u8 = &.{
+        "x86_64-linux-gnu",
+        "aarch64-linux-gnu",
+        "riscv64-linux-gnu",
+        "x86_64-windows-gnu",
+        "aarch64-macos-none",
+        "x86_64-macos-none",
+        "wasm32-wasi",
+        "wasm32-freestanding",
+        "arm-freestanding-eabi",
+        "thumb-freestanding-eabi",
+        "mips-freestanding",
+        "mipsel-freestanding",
+        "powerpc-freestanding",
+    };
+
+    const headless: backend.Backend = backends.find("headless") orelse @panic("neko: headless backend missing");
+    const step: *Builder.Step = b.step("check-targets", "Cross-compile the core + headless for many targets");
+
+    for (targets) |triple| {
+        const query: std.Target.Query = std.Target.Query.parse(.{ .arch_os_abi = triple }) catch |err| {
+            std.debug.print("neko: check-targets: bad target '{s}': {s}\n", .{ triple, @errorName(err) });
+            continue;
+        };
+        const resolved: Builder.ResolvedTarget = b.resolveTargetQuery(query);
+
+        const neko_mod: *Builder.Module = b.createModule(.{
+            .root_source_file = b.path("src/neko.zig"),
+            .target = resolved,
+            .optimize = optimize,
+        });
+        const ctx: backend.Context = .{
+            .b = b,
+            .neko = neko_mod,
+            .target = resolved,
+            .optimize = optimize,
+        };
+        const backend_mod: *Builder.Module = headless.build(ctx);
+        neko_mod.addImport("neko_backend", backend_mod);
+
+        const obj: *Builder.Step.Compile = b.addObject(.{
+            .name = b.fmt("neko-{s}", .{triple}),
+            .root_module = neko_mod,
+        });
+        step.dependOn(&obj.step);
+    }
+
+    return step;
 }
 
 // ── Freestanding guard ───────────────────────────────────────────────────────

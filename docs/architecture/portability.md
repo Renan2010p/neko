@@ -133,6 +133,22 @@ new device.
 
 ## Testing portability
 
-The unit tests (`zig build test`) import only backend-free core modules, so
-they run anywhere. To keep the core honest, avoid importing `neko_backend`
-outside `src/core/platform.zig`.
+`zig build test` runs the unit tests **and** `check-freestanding` (which fails if
+`src/core/**` names an OS API). Both import only backend-free core modules.
+
+`zig build check-targets` cross-compiles the core plus the `headless` backend
+for a matrix of targets without linking or running:
+
+```
+x86_64-linux-gnu   aarch64-linux-gnu   riscv64-linux-gnu
+x86_64-windows-gnu aarch64-macos-none  x86_64-macos-none
+wasm32-wasi        wasm32-freestanding
+arm-freestanding-eabi  thumb-freestanding-eabi
+mips-freestanding  mipsel-freestanding  powerpc-freestanding
+```
+
+It covers 32/64-bit, big-endian (mips/powerpc) and wasm, so a core change that
+assumes one architecture fails fast.
+
+To keep the core honest, avoid importing `neko_backend` outside
+`src/core/platform.zig`, and never call an OS API directly.
