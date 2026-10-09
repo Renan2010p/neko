@@ -10,8 +10,11 @@ platform behind a backend. The same engine core runs on the desktop (SDL2) and
 on the PlayStation 2 (gsKit + PS2SDK, freestanding).
 
 - Easy to start: a `Game` struct plus `neko.app.run` is a whole game.
+- 2D-friendly: input actions (`neko.input.Actions`), an asset registry with
+  visible errors (`neko.assets`), a camera (`neko.Camera2D`) and animation clips
+  (`neko.scene.Animator`).
 - Modular: `src/core/**` never touches the OS; backends do the heavy lifting.
-- Pluggable: a backend is a plugin registered in `build/backends.zig`; adding
+- Pluggable: a backend is a plugin registered in `src/backend/registry.zig`; adding
   one never touches `build.zig` or the core.
 - Documented: a guide in [`docs/`](docs/README.md).
 - Portable: hosted and freestanding targets share the same core.
@@ -71,7 +74,7 @@ presents. Before the first frame it shows the asset-free **NEKO boot splash**
 (disable with `.splash = null`). Input is queried directly (`neko.input.key`,
 `keyDown`, `mouse`, `mousePressed`, …). Prefer methods? Use `neko.app.run` with
 a game struct; want full control? Drive `neko.screen`/`neko.lifecycle` yourself.
-See [docs/getting-started.md](docs/getting-started.md).
+See [docs/getting-started.md](docs/guide/getting-started.md).
 
 ## Using it from a game
 
@@ -95,7 +98,7 @@ const neko = neko_dep.module("neko");
 ```
 
 Switching `.backend` never changes your game code — the engine wires the
-platform for you. See [docs/getting-started.md](docs/getting-started.md).
+platform for you. See [docs/getting-started.md](docs/guide/getting-started.md).
 
 ## pygame compatibility
 
@@ -149,22 +152,38 @@ and roadmap.
 
 ## Backends are plugins
 
-A backend lives in `src/backends/<name>/` and is registered in
-[`build/backends.zig`](build/backends.zig). Adding one is three files — never
-`build.zig`:
+Every backend shares one layout, so SDL2, PS2 and PSX read the same way:
 
-1. `src/backends/<name>/<name>.zig` exporting `kind` and `create() Backend`.
-2. `build/backends/<name>.zig` with a `plugin: Backend` (metadata + how to
-   build/link it).
-3. A one-line registration in `build/backends.zig`.
+```
+src/backend/<Name>/
+  platform.zig          the platform layer facade
+  platform/             its files (SDK bindings, key maps, C headers, runtime)
+  entry.zig             executable root (freestanding; optional when hosted)
+  render/
+    render.zig          common render helpers (or the single renderer)
+    <api>/render.zig    one presenter per graphics API (sdl, opengl, vulkan)
+```
+
+Adding one is three files — never `build.zig`:
+
+1. `src/backend/<Name>/render/render.zig` exporting `kind` and
+   `create() Backend`, and filling the capability table.
+2. `src/backend/<Name>/render/<api>/build.zig` with a `plugin: Backend`
+   (metadata + how to build/link it), using the `src/backend/plugin.zig`
+   contract.
+3. A one-line registration in `src/backend/registry.zig`.
 
 | Name    | Status  | Notes |
 |---------|---------|-------|
 | `sdl2`  | working | SDL2 + SDL2_ttf/image/mixer |
+| `sdl2-opengl` | working | SDL2 window + OpenGL presenter |
+| `sdl2-vulkan` | working | SDL2 window + Vulkan presenter |
 | `ps2`   | working | gsKit + pad, freestanding, built with `-ofmt=c` |
+| `psx`   | working | pure-Zig, freestanding |
+| `headless` | working | no OS, no window: the loop only (tests, servers, bare metal) |
 
 Select one with `-Dbackend=<name>` (default `sdl2`), list them with
-`zig build backends`, and read [docs/backends.md](docs/backends.md) to write
+`zig build backends`, and read [docs/backends.md](docs/architecture/backends.md) to write
 your own.
 
 ## Working on the engine
@@ -173,7 +192,8 @@ From this repository:
 
 ```sh
 zig build            # build the modules
-zig build test       # run the unit tests
+zig build test       # run the unit tests (+ the freestanding guard)
+zig build check-freestanding  # fail if src/core touches an OS API
 zig build backends   # list the available backends
 zig build docs       # write the API reference to zig-out/docs/api
 zig build python     # build the pygame-compatible Python extension
@@ -189,22 +209,30 @@ zig build test -Doptimize=Debug   # also: ReleaseSafe / ReleaseSmall
 src/neko.zig               public namespace root (the only file at src/ root)
 src/core/                  types, dispatch namespaces, scene/state, math
 src/core/base/             foundation: types, backend contract, context
+src/core/base/caps/        the per-capability vtable modules
+src/core/base/backend.zig  the composed backend contract (folded at comptime)
+src/core/engine.zig        the explicit `neko.Engine` handle (optional)
 src/core/platform.zig      the backend seam (the only core file that names a backend)
-src/core/math/             Vec2 + scalar helpers
+src/core/math/             Vec2/Vec3/Mat4 + scalar helpers
 src/compat/                compatibility layers (one directory per API)
 src/compat/pygame/         the pygame-shaped layer (Surface/draw/transform/display)
-src/backends/<name>/       one backend per platform (sdl2, ps2)
+src/backend/<Name>/        one backend per platform (SDL2, PS2, PSX)
+  platform.zig platform/   the platform layer + its files
+  entry.zig                executable root (freestanding; optional when hosted)
+  render/render.zig        common render helpers (or the single renderer)
+  render/<api>/render.zig  one presenter per graphics API
 src/test/                  the unit-test root
-build/backends.zig         the backend registry
-build/backends/<name>.zig  build plugin for one backend
+src/backend/plugin.zig     the build-plugin contract (build-time only)
+src/backend/registry.zig   the backend registry
+src/backend/<Name>/render/<api>/build.zig  per-backend build plugin
 bindings/python/           the CPython `_neko` extension + the `pygame` package
 docs/                      the guide
 ```
 
 The core depends only on the abstract `neko.Backend` interface; backends
-implement it. See [docs/architecture.md](docs/architecture.md),
-[docs/backends.md](docs/backends.md) and
-[docs/portability.md](docs/portability.md).
+implement it. See [docs/architecture.md](docs/architecture/architecture.md),
+[docs/backends.md](docs/architecture/backends.md) and
+[docs/portability.md](docs/architecture/portability.md).
 
 ## License
 

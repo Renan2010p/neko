@@ -15,20 +15,27 @@ const types: type = @import("../base/types.zig");
 const context: type = @import("../base/context.zig");
 const backend: type = @import("../base/backend.zig");
 const sprite: type = @import("../graphics/sprite.zig");
+const assets: type = @import("assets.zig");
+const log: type = @import("log.zig");
 
 /// Opens the window and prepares everything.
 pub fn init(config: types.Config) bool {
     context.allocator = config.allocator;
     context.assets_dir = config.assets_dir;
+    log.info("screen.init: backend={s} {d}x{d} assets='{s}'", .{ @tagName(platform.kind), config.width, config.height, config.assets_dir });
 
     const handle: backend.Backend = platform.create();
     context.attach(handle);
-    return handle.init(config);
+    const ok: bool = handle.init(config);
+    if (!ok) log.err("screen.init: backend '{s}' failed to start", .{@tagName(platform.kind)});
+    return ok;
 }
 
 /// Releases every resource and closes the window.
 pub fn shutdown() void {
+    log.info("screen.shutdown", .{});
     sprite.deinit();
+    assets.deinit();
 
     const e: backend.Backend = context.get() orelse return;
     e.shutdown();

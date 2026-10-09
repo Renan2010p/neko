@@ -23,6 +23,7 @@ const sprite_mod: type = @import("sprite.zig");
 const label_mod: type = @import("label.zig");
 const timer_mod: type = @import("timer.zig");
 const animated_sprite_mod: type = @import("animated_sprite.zig");
+const animator_mod: type = @import("animator.zig");
 const script_mod: type = @import("script.zig");
 
 pub const Node: type = node_mod.Node;
@@ -31,6 +32,8 @@ pub const Sprite: type = sprite_mod.Sprite;
 pub const Label: type = label_mod.Label;
 pub const Timer: type = timer_mod.Timer;
 pub const AnimatedSprite: type = animated_sprite_mod.AnimatedSprite;
+pub const Animator: type = animator_mod.Animator;
+pub const Clip: type = animator_mod.Clip;
 pub const Script: type = script_mod.Script;
 
 /// A **scene** is a root `Node` (plus its children). `neko.scene.create`
@@ -85,6 +88,12 @@ pub fn addAnimatedSprite(parent: *Node, options: AnimatedSprite.Options) !*Anima
     const n: *Node = try AnimatedSprite.create(parent.allocator, options);
     parent.add(n);
     return AnimatedSprite.from_node(n);
+}
+
+pub fn addAnimator(parent: *Node, options: Animator.Options) !*Animator {
+    const n: *Node = try Animator.create(parent.allocator, options);
+    parent.add(n);
+    return Animator.from_node(n);
 }
 
 /// Attaches `object` as a script node. `object` is any pointer to a struct with

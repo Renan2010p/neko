@@ -3,17 +3,31 @@
 const types: type = @import("../base/types.zig");
 const context: type = @import("../base/context.zig");
 const backend: type = @import("../base/backend.zig");
+const camera: type = @import("camera2d.zig");
+const log: type = @import("../system/log.zig");
 
 /// Loads a texture from `path` (PNG, …).
 pub fn load(path: []const u8) ?types.TextureHandle {
     const e: backend.Backend = context.get() orelse return null;
-    return e.load_texture(path);
+    const handle: ?types.TextureHandle = e.load_texture(path);
+    if (handle == null) {
+        log.warn("gpu: texture load '{s}' failed", .{path});
+    } else {
+        log.info("gpu: texture load '{s}'", .{path});
+    }
+    return handle;
 }
 
 /// Creates an offscreen render target of `width` x `height`.
 pub fn create_target(width: u32, height: u32) ?types.TextureHandle {
     const e: backend.Backend = context.get() orelse return null;
-    return e.create_target(width, height);
+    const handle: ?types.TextureHandle = e.create_target(width, height);
+    if (handle == null) {
+        log.warn("gpu: render target {d}x{d} failed", .{ width, height });
+    } else {
+        log.info("gpu: render target {d}x{d}", .{ width, height });
+    }
+    return handle;
 }
 
 /// Creates a CPU-writable streaming texture of `width` x `height`.
@@ -23,18 +37,31 @@ pub fn create_target(width: u32, height: u32) ?types.TextureHandle {
 /// bytes per row and must be at least `width * 4`.
 pub fn create(width: u32, height: u32) ?types.TextureHandle {
     const e: backend.Backend = context.get() orelse return null;
-    return e.create_texture(width, height, null, width * 4);
+    const handle: ?types.TextureHandle = e.create_texture(width, height, null, width * 4);
+    if (handle == null) {
+        log.warn("gpu: streaming texture {d}x{d} alloc failed", .{ width, height });
+    } else {
+        log.info("gpu: streaming texture {d}x{d} alloc ({d} bytes)", .{ width, height, width * height * 4 });
+    }
+    return handle;
 }
 
 /// As `create`, but uploads an initial pixel buffer.
 pub fn fromPixels(width: u32, height: u32, pixels: []const u8, pitch: u32) ?types.TextureHandle {
     const e: backend.Backend = context.get() orelse return null;
-    return e.create_texture(width, height, pixels, pitch);
+    const handle: ?types.TextureHandle = e.create_texture(width, height, pixels, pitch);
+    if (handle == null) {
+        log.warn("gpu: texture upload {d}x{d} (pitch {d}) failed", .{ width, height, pitch });
+    } else {
+        log.info("gpu: texture upload {d}x{d} (pitch {d}, {d} bytes)", .{ width, height, pitch, pixels.len });
+    }
+    return handle;
 }
 
 /// Re-uploads `pixels` (packed ARGB, `pitch` bytes per row) into `tex`.
 pub fn update(tex: types.TextureHandle, pixels: []const u8, pitch: u32) void {
     const e: backend.Backend = context.get() orelse return;
+    log.debug("gpu: texture {d} update ({d} bytes, pitch {d})", .{ tex.id, pixels.len, pitch });
     e.update_texture(tex, pixels, pitch);
 }
 
@@ -42,13 +69,13 @@ pub fn update(tex: types.TextureHandle, pixels: []const u8, pitch: u32) void {
 /// texture) and `alpha` overrides opacity (null = opaque).
 pub fn draw(tex: types.TextureHandle, dst: types.Rect, src: ?types.Rect, alpha: ?u8) void {
     const e: backend.Backend = context.get() orelse return;
-    e.draw_texture(tex, dst, src, alpha);
+    e.draw_texture(tex, camera.applyRect(dst), src, alpha);
 }
 
 /// Draws `tex` into `dst` rotated by `angle` degrees.
 pub fn draw_rotated(tex: types.TextureHandle, dst: types.Rect, angle: f32, alpha: ?u8) void {
     const e: backend.Backend = context.get() orelse return;
-    e.draw_texture_rotated(tex, dst, angle, alpha);
+    e.draw_texture_rotated(tex, camera.applyRect(dst), angle, alpha);
 }
 
 /// Returns the pixel size of `tex`, or (0, 0) if unknown.

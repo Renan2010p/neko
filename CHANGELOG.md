@@ -8,6 +8,32 @@ All notable changes to Neko are documented here. The format follows
 
 ### Added
 
+- **2D ergonomics** (see [`docs/architecture/api-2d.md`](docs/architecture/api-2d.md)):
+  - `neko.input.Actions(E)` — type-safe, per-instance input actions
+    (`bind`, `held`, `justPressed`, `justReleased`, `axis`).
+  - `neko.assets` — a name → resource registry with **visible errors**
+    (`load_texture`/`load_font`/`load_sound`, getters, `unload`), freed on
+    shutdown.
+  - `neko.Camera2D` — a 2D camera that works on every backend by offsetting at
+    the core (world draws shift; UI draws after `end()`).
+  - `neko.scene.Animator` — named animation clips over sprite frames
+    (`play("run")`), plus `neko.Clip`.
+  - `neko.sound.Sound` — a loaded sound that carries its own handle.
+- **`headless` backend**: a no-OS reference backend (a deterministic clock and a
+  run flag only) for tests, servers and bare metal. Select it with
+  `-Dbackend=headless`; it needs no libc and no window.
+- **`zig build check-freestanding`**: fails if `src/core/**` references an OS API
+  (`std.fs`, threads, POSIX, C bindings, raw `std.Io.Dir`/`File`); runs as part
+  of `zig build test`.
+- **Capability-based backend contract**: the vtable is now folded at compile
+  time from `src/core/base/caps/**` (`core`, `window`, `graphics`, `text`,
+  `audio`, `files`, `input`, `misc`), and every field has a no-op default. A
+  backend only names the capabilities it supports. Backends also declare a
+  `neko.Capabilities` set and answer `backend.supports(.feature)`.
+- **`neko.Engine`**: an optional explicit engine handle
+  (`create`/`init`/`shutdown`/`present`/`keeps_running`/`supports`), useful for
+  tools, tests and embedding. The global `neko.*` namespaces are unchanged.
+- **`docs/architecture/design.md`**: the stable-API and 3D design proposal.
 - **3D rendering (M1)**: the `sdl2-opengl` backend now has a depth-tested 3D
   pipeline (MVP transform + one directional light, back-face culling off), with
   built-in `cube`, `quad` and `plane` meshes. Core: `neko.mesh3d`,
@@ -51,6 +77,20 @@ All notable changes to Neko are documented here. The format follows
 
 ### Changed
 
+- **`Config.io` is optional** (`?std.Io`): a freestanding backend needs no
+  process I/O, and file operations degrade to null/false when it is absent. The
+  core stores only the allocator and the assets directory.
+- **Unified backend layout**: every backend lives in `src/backend/<Name>/` with
+  `platform.zig` + `platform/`, `entry.zig`, and `render/render.zig` (plus
+  `render/<api>/render.zig` for multi-presenter platforms). The build plugin is
+  co-located as `render/<api>/build.zig`; the registry is
+  `src/backend/registry.zig` and the build contract `src/backend/plugin.zig`.
+  There is no `build/backends/**` tree anymore.
+- **Shared SDL platform layer**: `src/backend/SDL2/platform.zig` owns the SDL
+  window, events, timing and files; `sdl2-opengl` and `sdl2-vulkan` reuse it and
+  drop their no-op stubs.
+- **Docs reorganized** into `docs/guide`, `docs/architecture` and
+  `docs/reference`; `como-funciona.md` became `guide/how-it-works.md` (English).
 - `zig build` defaults to **ReleaseFast**.
 - **Source layout split into focused modules**: the pygame layer is now
   `src/compat/pygame/{pygame,pixel,rect,surface,draw,transform,display}.zig`

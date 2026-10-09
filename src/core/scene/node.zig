@@ -9,6 +9,7 @@ const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
 const types: type = @import("../base/types.zig");
 const event: type = @import("../system/event.zig");
+const log: type = @import("../system/log.zig");
 
 /// A node in the scene tree.
 pub const Node: type = struct {
@@ -40,6 +41,7 @@ pub const Node: type = struct {
     /// A plain container node (no drawing of its own).
     pub fn create(allocator: Allocator, options: Options) !*Node {
         const self: *Node = try allocator.create(Node);
+        log.debug("scene: new node '{s}' ({d} bytes)", .{ options.name, @sizeOf(Node) });
         self.* = Node{
             .ptr = @ptrCast(self),
             .vtable = &empty_vtable,

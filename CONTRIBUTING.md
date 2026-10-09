@@ -30,9 +30,10 @@ zig build python     # the _neko CPython extension + pygame package
 
 ## Adding a backend
 
-Backends are plugins: create `src/backends/<name>/`, `build/backends/<name>.zig`
-and register it in `build/backends.zig`. `build.zig` never changes. The full
-contract is in [docs/backends.md](docs/backends.md).
+Backends are plugins: create `src/backend/<Name>/` (its `render/<api>/build.zig`
+and, for a new kind, an entry in `src/backend/registry.zig`). `build.zig` never
+changes. The full
+contract is in [docs/backends.md](docs/architecture/backends.md).
 
 ## Pull requests
 

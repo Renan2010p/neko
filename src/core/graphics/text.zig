@@ -3,6 +3,7 @@
 const types: type = @import("../base/types.zig");
 const context: type = @import("../base/context.zig");
 const backend: type = @import("../base/backend.zig");
+const camera: type = @import("camera2d.zig");
 
 /// Optional parameters shared by the text functions (`neko.text` and
 /// `neko.sprite`). Defaults mirror the C++ engine: size 24, white, not
@@ -23,13 +24,15 @@ pub fn load_font(path: []const u8, pixel_size: u16) i64 {
 /// Draws `text` at (x, y). If the backend has no font, nothing is drawn.
 pub fn draw(str: []const u8, x: i32, y: i32, options: Options) void {
     const e: backend.Backend = context.get() orelse return;
-    _ = e.draw_text(str, x, y, options.size, options.color, options.center, options.font);
+    const at: types.Point = camera.apply(types.Point{ .x = x, .y = y });
+    _ = e.draw_text(str, at.x, at.y, options.size, options.color, options.center, options.font);
 }
 
 /// Draws `text` rotated by `angle` degrees around its top-left.
 pub fn draw_rotated(str: []const u8, x: i32, y: i32, angle: f32, options: Options) void {
     const e: backend.Backend = context.get() orelse return;
-    _ = e.draw_text_rotated(str, x, y, options.size, angle, options.color, options.center, options.font);
+    const at: types.Point = camera.apply(types.Point{ .x = x, .y = y });
+    _ = e.draw_text_rotated(str, at.x, at.y, options.size, angle, options.color, options.center, options.font);
 }
 
 /// Measures `text` with the given font index, in pixels.

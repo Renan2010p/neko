@@ -11,9 +11,10 @@
 //!
 //! ## Backends are plugins
 //!
-//! A backend lives in `src/backends/<name>/` and is registered in
-//! `build/backends.zig`. Adding one means writing `build/backends/<name>.zig`
-//! (a `plugin: Backend`) and listing it there — `build.zig` never changes. The
+//! A backend lives in `src/backend/<Name>/` and is registered in
+//! `src/backend/registry.zig`. Adding one means writing a `plugin: Backend`
+//! (a `build.zig` next to the renderer) and listing it there — `build.zig` never
+//! changes. The
 //! selected backend is chosen with `-Dbackend=<name>`:
 //!
 //!     zig build -Dbackend=ps2
@@ -31,8 +32,8 @@ const std: type = @import("std");
 const builtin: type = std.builtin;
 const Builder: type = std.Build;
 
-const backend: type = @import("build/backend.zig");
-const backends: type = @import("build/backends.zig");
+const backend: type = @import("src/backend/plugin.zig");
+const backends: type = @import("src/backend/registry.zig");
 
 pub fn build(b: *Builder) void {
     const target: Builder.ResolvedTarget = b.standardTargetOptions(.{});
@@ -44,7 +45,7 @@ pub fn build(b: *Builder) void {
         "Prioritize performance, safety, or binary size",
     ) orelse .ReleaseFast;
 
-    // The backend is a name looked up in the registry (`build/backends.zig`),
+    // The backend is a name looked up in the registry (`src/backend/registry.zig`),
     // so adding one never requires editing this file.
     const backend_name: []const u8 = b.option(
         []const u8,
@@ -109,7 +110,8 @@ pub fn build(b: *Builder) void {
 
     // ── Developer steps ──────────────────────────────────────────────────
     if (hosted) {
-        add_tests(b, neko);
+        const freestanding_check: *Builder.Step = add_freestanding_check(b);
+        add_tests(b, neko, freestanding_check);
         add_docs(b, neko);
         add_python(b, neko, pygame, target, optimize, sdl2_include, sdl2_lib, plugin);
     }
@@ -127,12 +129,35 @@ pub fn build(b: *Builder) void {
 /// `src/`), so the whole engine tree is part of the test compilation; the unit
 /// tests live next to the code they test and `src/test/root.zig` gathers any
 /// extra test-only files.
-fn add_tests(b: *Builder, neko: *Builder.Module) void {
+fn add_tests(b: *Builder, neko: *Builder.Module, extra: *Builder.Step) void {
     const tests: *Builder.Step.Compile = b.addTest(.{ .root_module = neko });
     const run_tests: *Builder.Step.Run = b.addRunArtifact(tests);
 
     const step: *Builder.Step = b.step("test", "Run the unit tests");
     step.dependOn(&run_tests.step);
+    step.dependOn(extra);
+}
+
+// ── Freestanding guard ───────────────────────────────────────────────────────
+
+/// Adds `zig build check-freestanding`: fail if `src/core/**` references an OS
+/// API. Runs as part of `zig build test`.
+fn add_freestanding_check(b: *Builder) *Builder.Step {
+    const tool: *Builder.Step.Compile = b.addExecutable(.{
+        .name = "check-freestanding",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("tools/check_freestanding.zig"),
+            .target = b.graph.host,
+            .optimize = .ReleaseSafe,
+        }),
+    });
+    const run: *Builder.Step.Run = b.addRunArtifact(tool);
+    run.addArg("src/core");
+    run.setCwd(b.path("."));
+
+    const step: *Builder.Step = b.step("check-freestanding", "Fail if src/core touches an OS API");
+    step.dependOn(&run.step);
+    return &run.step;
 }
 
 // ── Python bindings ──────────────────────────────────────────────────────────

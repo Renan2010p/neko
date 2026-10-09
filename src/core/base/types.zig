@@ -215,6 +215,8 @@ pub const BackendKind: type = enum {
     sdl2_vulkan,
     /// PlayStation 1 (pure Zig, freestanding).
     psx,
+    /// No OS, no window: the engine loop only (tests, servers, bare metal).
+    headless,
 };
 
 /// Everything a backend needs to open a window and run.
@@ -223,10 +225,11 @@ pub const BackendKind: type = enum {
 /// `assets_dir`; the rest is consumed by the backend chosen at build time.
 pub const Config: type = struct {
     allocator: Allocator,
-    /// The process I/O handle (from `main(init: std.process.Init)`). Read only
-    /// by the backend, which uses it to satisfy the `Backend` file operations
-    /// (save files, asset access). The core never touches it directly.
-    io: std.Io,
+    /// The process I/O handle (from `main(init: std.process.Init)`), or `null`
+    /// on a target without one (freestanding/bare-metal). Read only by the
+    /// backend, which uses it to satisfy the `Backend` file operations (save
+    /// files, asset access). The core never touches it directly.
+    io: ?std.Io = null,
     title: []const u8,
     width: u32,
     height: u32,

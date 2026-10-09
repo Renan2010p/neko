@@ -4,7 +4,7 @@
 //!
 //!   - `src/core/**` uses only the abstract `Backend` interface (events,
 //!     drawing, textures, text, sound, files) and never touches an OS API.
-//!   - `src/backends/<name>/**` is where the real work happens: SDL2 on the
+//!   - `src/backend/<name>/**` is where the real work happens: SDL2 on the
 //!     desktop, gsKit on the PS2, and so on.
 //!   - this file (`src/core/platform.zig`) is the single bridge between the
 //!     two. It re-exports the backend kind and hands the core an abstract

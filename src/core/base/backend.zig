@@ -1,11 +1,20 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (C) 2026 Renan Lucas Vieira Hilário
+
 //! The low-level backend dispatch table.
 //!
-//! Every platform backend (SDL2 today; PS2 later) fills in a `VTable` and
-//! hands back a `Backend` handle. The public `engine.*` namespaces call the
-//! wrapper methods below, which forward to the backend through `ptr`.
+//! A platform backend fills in a `VTable` and hands back a `Backend` handle.
+//! The public `neko.*` namespaces call the wrapper methods below, which forward
+//! to the backend through `vtable`.
 //!
-//! Game code never touches this type directly: it uses `engine.draw`,
-//! `engine.text`, and friends.
+//! The `VTable` is **not** written by hand: it is folded at compile time from
+//! the capability modules under `caps/` (`core`, `window`, `graphics`, `text`,
+//! `audio`, `files`, `input`, `misc`). Each field has a no-op default, so a
+//! backend only has to name the capabilities it supports — everything else
+//! degrades gracefully.
+//!
+//! Game code never touches this type directly: it uses `neko.draw`,
+//! `neko.text`, and friends.
 
 const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
@@ -13,83 +22,50 @@ const types: type = @import("types.zig");
 const event: type = @import("../system/event.zig");
 const render3d: type = @import("render3d.zig");
 
+const features: type = @import("caps/features.zig");
+const merge_mod: type = @import("caps/merge.zig");
+const core_cap: type = @import("caps/core.zig");
+const window_cap: type = @import("caps/window.zig");
+const graphics_cap: type = @import("caps/graphics.zig");
+const text_cap: type = @import("caps/text.zig");
+const audio_cap: type = @import("caps/audio.zig");
+const files_cap: type = @import("caps/files.zig");
+const input_cap: type = @import("caps/input.zig");
+const misc_cap: type = @import("caps/misc.zig");
+
+/// A capability or optional feature a backend may declare.
+pub const Feature: type = features.Feature;
+
+/// A set of declared capabilities.
+pub const Capabilities: type = features.Capabilities;
+
 /// A type-erased handle to a platform backend.
 pub const Backend: type = struct {
     ptr: *anyopaque,
     vtable: *const VTable,
     /// Optional 3D pipeline. `null` for 2D-only backends.
     render3d: ?*const render3d.VTable = null,
+    /// The capabilities this backend declares. Empty when undeclared.
+    caps: Capabilities = Capabilities.initEmpty(),
 
-    /// The backend function table. Every backend must provide all of these.
-    pub const VTable: type = struct {
-        // ── Lifecycle ────────────────────────────────────────────────────
-        init: *const fn (ptr: *anyopaque, config: types.Config) bool,
-        shutdown: *const fn (ptr: *anyopaque) void,
-        keeps_running: *const fn (ptr: *anyopaque) bool,
-        request_stop: *const fn (ptr: *anyopaque) void,
-        present: *const fn (ptr: *anyopaque) void,
+    /// The backend function table, folded from the capability modules under
+    /// `caps/`. Every field has a no-op default, so a backend only names the
+    /// capabilities it supports; unsupported calls degrade to a no-op.
+    pub const VTable: type = merge_mod.merge(&.{
+        core_cap.VTable,
+        window_cap.VTable,
+        graphics_cap.VTable,
+        text_cap.VTable,
+        audio_cap.VTable,
+        files_cap.VTable,
+        input_cap.VTable,
+        misc_cap.VTable,
+    });
 
-        // ── Events and timing ────────────────────────────────────────────
-        poll_event: *const fn (ptr: *anyopaque) ?event.Event,
-        ticks_ms: *const fn (ptr: *anyopaque) u64,
-
-        // ── Window ───────────────────────────────────────────────────────
-        set_title: *const fn (ptr: *anyopaque, title: []const u8) void,
-        set_logical_size: *const fn (ptr: *anyopaque, width: u32, height: u32) void,
-        set_fullscreen: *const fn (ptr: *anyopaque, on: bool) void,
-        set_vsync: *const fn (ptr: *anyopaque, on: bool) void,
-        set_resolution: *const fn (ptr: *anyopaque, width: u32, height: u32) void,
-        logical_size: *const fn (ptr: *anyopaque) types.Point,
-        display_modes: *const fn (ptr: *anyopaque, allocator: Allocator) []types.DisplayMode,
-        supports_curved_panorama: *const fn (ptr: *anyopaque) bool,
-        supports_offscreen_targets: *const fn (ptr: *anyopaque) bool,
-        set_draw_offset: *const fn (ptr: *anyopaque, dx: i32, dy: i32) void,
-
-        // ── Drawing primitives ───────────────────────────────────────────
-        clear: *const fn (ptr: *anyopaque, color: types.Color) void,
-        draw_rect: *const fn (ptr: *anyopaque, rect: types.Rect, color: types.Color, filled: bool) void,
-        draw_line: *const fn (ptr: *anyopaque, x1: i32, y1: i32, x2: i32, y2: i32, color: types.Color) void,
-        draw_circle: *const fn (ptr: *anyopaque, cx: i32, cy: i32, radius: i32, color: types.Color, filled: bool) void,
-
-        // ── Textures and render targets ──────────────────────────────────
-        load_texture: *const fn (ptr: *anyopaque, path: []const u8) ?types.TextureHandle,
-        create_target: *const fn (ptr: *anyopaque, width: u32, height: u32) ?types.TextureHandle,
-        create_texture: *const fn (ptr: *anyopaque, width: u32, height: u32, pixels: ?[]const u8, pitch: u32) ?types.TextureHandle,
-        update_texture: *const fn (ptr: *anyopaque, tex: types.TextureHandle, pixels: []const u8, pitch: u32) void,
-        draw_texture: *const fn (ptr: *anyopaque, tex: types.TextureHandle, dst: types.Rect, src: ?types.Rect, alpha: ?u8) void,
-        draw_texture_rotated: *const fn (ptr: *anyopaque, tex: types.TextureHandle, dst: types.Rect, angle: f32, alpha: ?u8) void,
-        texture_size: *const fn (ptr: *anyopaque, tex: types.TextureHandle) types.Point,
-        geometry: *const fn (ptr: *anyopaque, tex: types.TextureHandle, vertices: []const types.Vertex, indices: []const i32) void,
-        set_render_target: *const fn (ptr: *anyopaque, target: ?types.TextureHandle) void,
-
-        // ── Text ─────────────────────────────────────────────────────────
-        load_font: *const fn (ptr: *anyopaque, path: []const u8, size: u16) i64,
-        draw_text: *const fn (ptr: *anyopaque, text: []const u8, x: i32, y: i32, size: u32, color: types.Color, center: bool, font_idx: i64) bool,
-        draw_text_rotated: *const fn (ptr: *anyopaque, text: []const u8, x: i32, y: i32, size: u32, angle: f32, color: types.Color, center: bool, font_idx: i64) bool,
-        text_size: *const fn (ptr: *anyopaque, text: []const u8, font_idx: u32) ?types.Point,
-
-        // ── Sound ────────────────────────────────────────────────────────
-        load_sound: *const fn (ptr: *anyopaque, path: []const u8) ?types.SoundHandle,
-        play_sound: *const fn (ptr: *anyopaque, snd: types.SoundHandle, loops: i32, channel: i32) i32,
-        stop_channel: *const fn (ptr: *anyopaque, channel: i32) void,
-        stop_all_sounds: *const fn (ptr: *anyopaque) void,
-        set_master_volume: *const fn (ptr: *anyopaque, vol: i32) void,
-        set_sfx_volume: *const fn (ptr: *anyopaque, vol: i32) void,
-        set_music_volume: *const fn (ptr: *anyopaque, vol: i32) void,
-
-        // ── Files ────────────────────────────────────────────────────────
-        // The core never touches the host filesystem directly: save files and
-        // any other file access go through the backend. Backends without a
-        // filesystem (e.g. the PS2) return null/false and do nothing.
-        read_file: *const fn (ptr: *anyopaque, allocator: Allocator, dir_path: []const u8, file_name: []const u8, max: usize) ?[]u8,
-        write_file: *const fn (ptr: *anyopaque, dir_path: []const u8, file_name: []const u8, data: []const u8) bool,
-        delete_file: *const fn (ptr: *anyopaque, dir_path: []const u8, file_name: []const u8) void,
-        file_exists: *const fn (ptr: *anyopaque, dir_path: []const u8, file_name: []const u8) bool,
-
-        // ── Input and misc ───────────────────────────────────────────────
-        mouse_pos: *const fn (ptr: *anyopaque) types.Point,
-        update_discord: *const fn (ptr: *anyopaque, details: []const u8, state: []const u8) void,
-    };
+    /// True when the backend declares `feature`.
+    pub fn supports(self: Backend, feature: Feature) bool {
+        return self.caps.contains(feature);
+    }
 
     // ── Lifecycle ────────────────────────────────────────────────────────
 

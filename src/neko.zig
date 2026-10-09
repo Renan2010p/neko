@@ -55,6 +55,7 @@
 //!
 //! | Namespace            | Purpose                                             |
 //! |----------------------|-----------------------------------------------------|
+//! | `neko.Engine`        | an explicit engine handle (optional)                |
 //! | `neko.app`           | run-loop helpers (`neko.app.run`, `neko.app.frames`)|
 //! | `neko.run`           | run a game from a single frame callback              |
 //! | `neko.quit`          | stop the main loop                                   |
@@ -80,7 +81,7 @@
 //! | `neko.platform`      | the backend seam (advanced; backends and tools)     |
 //!
 //! `Backend` is the internal contract a platform implements; only backends
-//! (`src/backends/...`) and the seam (`src/core/platform.zig`) reference it.
+//! (`src/backend/...`) and the seam (`src/core/platform.zig`) reference it.
 
 const std: type = @import("std");
 const Allocator: type = std.mem.Allocator;
@@ -122,6 +123,12 @@ pub const Wheel: type = event_mod.Event.Wheel;
 
 pub const Backend: type = backend.Backend;
 
+/// A capability/feature a backend may declare (see `Backend.supports`).
+pub const Feature: type = backend.Feature;
+
+/// A set of declared backend capabilities.
+pub const Capabilities: type = backend.Capabilities;
+
 /// Registers the active backend so the namespaces below can dispatch.
 pub fn attach(handle: backend.Backend) void {
     context.attach(handle);
@@ -136,6 +143,13 @@ pub fn detach() void {
 pub fn assets_dir() []const u8 {
     return context.assets_dir;
 }
+
+// ── Explicit engine handle (optional) ────────────────────────────────────
+
+/// An explicit engine handle. The global `neko.*` namespaces keep working; use
+/// `Engine` when you want to start/stop the backend yourself (tools, tests,
+/// embedding). See `neko.Engine`.
+pub const Engine: type = @import("core/engine.zig").Engine;
 
 /// The allocator passed in `Config`.
 pub fn allocator() Allocator {
@@ -192,15 +206,22 @@ pub const time: type = @import("core/system/time.zig");
 pub const random: type = @import("core/system/random.zig");
 pub const localization: type = @import("core/system/localization.zig");
 pub const input: type = @import("core/system/input.zig");
+/// Type-safe input actions: `var acts: neko.input.Actions(MyEnum) = .{};`
+pub const Actions: type = input.Actions;
+pub const assets: type = @import("core/system/assets.zig");
 pub const screen: type = @import("core/system/screen.zig");
 pub const window: type = @import("core/system/window.zig");
 pub const Window: type = window.Window;
 pub const splash: type = @import("core/system/splash.zig");
 pub const debug: type = @import("core/system/debug.zig");
+pub const log: type = @import("core/system/log.zig");
 pub const save: type = @import("core/system/save.zig");
 
 // Graphics.
 pub const draw: type = @import("core/graphics/draw.zig");
+/// A 2D camera that scrolls the world on any backend.
+pub const camera2d: type = @import("core/graphics/camera2d.zig");
+pub const Camera2D: type = camera2d.Camera2D;
 pub const texture: type = @import("core/graphics/texture.zig");
 pub const text: type = @import("core/graphics/text.zig");
 pub const sprite: type = @import("core/graphics/sprite.zig");
@@ -227,6 +248,8 @@ pub const mesh3d: type = @import("core/3d/mesh.zig");
 pub const scene: type = @import("core/scene/scene.zig");
 pub const Scene: type = scene.Scene;
 pub const Script: type = scene.Script;
+pub const Animator: type = scene.Animator;
+pub const Clip: type = scene.Clip;
 
 // ── Tests ────────────────────────────────────────────────────────────────────
 // Pulled in only by `zig build test` (a `test` block is ignored otherwise).

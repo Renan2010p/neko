@@ -173,3 +173,114 @@ pub fn mouse() types.Point {
 pub fn wheel() f32 {
     return wheel_value;
 }
+
+// ── Actions ──────────────────────────────────────────────────────────────────
+
+/// One physical input a named action can be bound to.
+pub const Source: type = union(enum) {
+    key: Key,
+    mouse: MouseButton,
+};
+
+/// A type-safe action map for an enum you define. It is a value you own (no
+/// global state), so it is easy to test and reuse:
+///
+/// ```zig
+/// const Act = enum { jump, left, right };
+/// var acts: neko.input.Actions(Act) = .{};
+///
+/// acts.bind(.jump, &.{ .{ .key = .space } });
+/// acts.bind(.left, &.{ .{ .key = .left }, .{ .key = .a } });
+/// acts.bind(.right, &.{ .{ .key = .right }, .{ .key = .d } });
+///
+/// if (acts.justPressed(.jump)) player.jump();
+/// const move: f32 = acts.axis(.left, .right); // -1..1
+/// ```
+///
+/// Raw `key`/`keyDown`/`mouse*` queries stay available for menus and tools.
+pub fn Actions(comptime E: type) type {
+    return struct {
+        const Self: type = @This();
+        const max_sources: usize = 4;
+
+        const Slot: type = struct {
+            sources: [max_sources]Source = undefined,
+            len: usize = 0,
+        };
+
+        slots: [std.meta.fields(E).len]Slot = @splat(.{}),
+
+        const Match: type = enum { held, pressed, released };
+
+        /// Binds `action` to `sources`, replacing any previous binding.
+        pub fn bind(self: *Self, action: E, sources: []const Source) void {
+            const i: usize = @intFromEnum(action);
+            const n: usize = @min(sources.len, max_sources);
+            var j: usize = 0;
+            while (j < n) : (j += 1) {
+                self.slots[i].sources[j] = sources[j];
+            }
+            self.slots[i].len = n;
+        }
+
+        fn matches(self: *const Self, action: E, mode: Match) bool {
+            const slot: Slot = self.slots[@intFromEnum(action)];
+            for (slot.sources[0..slot.len]) |source| {
+                switch (source) {
+                    .key => |k| switch (mode) {
+                        .held => if (key(k)) return true,
+                        .pressed => if (keyDown(k)) return true,
+                        .released => if (keyUp(k)) return true,
+                    },
+                    .mouse => |b| switch (mode) {
+                        .held => if (mouseDown(b)) return true,
+                        .pressed => if (mousePressed(b)) return true,
+                        .released => if (mouseReleased(b)) return true,
+                    },
+                }
+            }
+            return false;
+        }
+
+        /// True while any bound source of `action` is held.
+        pub fn held(self: *const Self, action: E) bool {
+            return self.matches(action, .held);
+        }
+
+        /// True only on the frame any bound source of `action` went down.
+        pub fn justPressed(self: *const Self, action: E) bool {
+            return self.matches(action, .pressed);
+        }
+
+        /// True only on the frame any bound source of `action` went up.
+        pub fn justReleased(self: *const Self, action: E) bool {
+            return self.matches(action, .released);
+        }
+
+        /// `positive - negative`, each 0 or 1: an analog-style axis from two
+        /// digital actions.
+        pub fn axis(self: *const Self, negative: E, positive: E) f32 {
+            const lo: f32 = if (self.held(negative)) 1 else 0;
+            const hi: f32 = if (self.held(positive)) 1 else 0;
+            return hi - lo;
+        }
+    };
+}
+
+// ── Tests ────────────────────────────────────────────────────────────────────
+
+const testing: type = @import("std").testing;
+
+test "Actions binds sources and reports idle state" {
+    const Act: type = enum { jump, left, right };
+
+    var acts: Actions(Act) = .{};
+    acts.bind(.jump, &.{ .{ .key = .space }, .{ .mouse = .left } });
+    acts.bind(.left, &.{.{ .key = .left }});
+    acts.bind(.right, &.{.{ .key = .right }});
+
+    // No backend, no events: everything is idle.
+    try testing.expect(!acts.held(.jump));
+    try testing.expect(!acts.justPressed(.jump));
+    try testing.expectEqual(@as(f32, 0), acts.axis(.left, .right));
+}

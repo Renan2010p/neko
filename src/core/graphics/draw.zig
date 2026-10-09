@@ -7,6 +7,7 @@ const types: type = @import("../base/types.zig");
 const context: type = @import("../base/context.zig");
 const backend: type = @import("../base/backend.zig");
 const sprite_mod: type = @import("sprite.zig");
+const camera: type = @import("camera2d.zig");
 
 /// Fills the whole frame buffer with `color`.
 pub fn clear(color: types.Color) void {
@@ -14,22 +15,25 @@ pub fn clear(color: types.Color) void {
     e.clear(color);
 }
 
-/// Fills (or outlines) an axis-aligned rectangle.
+/// Fills (or outlines) an axis-aligned rectangle (`neko.Camera2D`-relative).
 pub fn rect(r: types.Rect, color: types.Color, filled: bool) void {
     const e: backend.Backend = context.get() orelse return;
-    e.draw_rect(r, color, filled);
+    e.draw_rect(camera.applyRect(r), color, filled);
 }
 
-/// Draws a line from (x1, y1) to (x2, y2).
+/// Draws a line from (x1, y1) to (x2, y2) (`neko.Camera2D`-relative).
 pub fn line(x1: i32, y1: i32, x2: i32, y2: i32, color: types.Color) void {
     const e: backend.Backend = context.get() orelse return;
-    e.draw_line(x1, y1, x2, y2, color);
+    const a: types.Point = camera.apply(types.Point{ .x = x1, .y = y1 });
+    const b: types.Point = camera.apply(types.Point{ .x = x2, .y = y2 });
+    e.draw_line(a.x, a.y, b.x, b.y, color);
 }
 
-/// Draws a circle centred at (cx, cy).
+/// Draws a circle centred at (cx, cy) (`neko.Camera2D`-relative).
 pub fn circle(cx: i32, cy: i32, radius: i32, color: types.Color, filled: bool) void {
     const e: backend.Backend = context.get() orelse return;
-    e.draw_circle(cx, cy, radius, color, filled);
+    const c: types.Point = camera.apply(types.Point{ .x = cx, .y = cy });
+    e.draw_circle(c.x, c.y, radius, color, filled);
 }
 
 /// Fills the convex quad p1→p2→p3→p4 using the platform's default scanline
