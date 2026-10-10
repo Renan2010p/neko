@@ -89,6 +89,12 @@ const types: type = @import("core/base/types.zig");
 const context: type = @import("core/base/context.zig");
 const backend: type = @import("core/base/backend.zig");
 
+// ── Version ──────────────────────────────────────────────────────────────
+
+/// The engine version, mirroring `build.zig.zon`. Games show it in a menu with
+/// `"Neko: v" ++ neko.version`.
+pub const version: []const u8 = "0.1.0";
+
 // ── Shared types ─────────────────────────────────────────────────────────
 
 pub const Color: type = types.Color;
