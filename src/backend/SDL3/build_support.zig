@@ -26,8 +26,13 @@ pub fn cModule(ctx: backend.Context, header: []const u8, extra_libs: []const []c
         .link_libc = true,
     });
     if (ctx.sdl2_include) |inc| translate.addIncludePath(.{ .cwd_relative = inc });
-    for (SDL_LIBS) |name| translate.linkSystemLibrary(name, .{});
-    for (extra_libs) |name| translate.linkSystemLibrary(name, .{});
+    // With explicit headers (platforms without pkg-config, e.g. Windows) there
+    // is nothing for pkg-config to resolve, so skip it here; the backend module
+    // links the libraries itself (see `link`).
+    if (ctx.sdl2_include == null) {
+        for (SDL_LIBS) |name| translate.linkSystemLibrary(name, .{});
+        for (extra_libs) |name| translate.linkSystemLibrary(name, .{});
+    }
     return translate.createModule();
 }
 
