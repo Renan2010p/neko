@@ -11,13 +11,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Neko targets Zig 0.16.0 (0.17.0 removed std.Build helpers we use), so
-      # fetch that exact version straight from ziglang.org.
-      - name: Install Zig 0.16.0
+      # Neko targets Zig 0.17.0, so fetch that exact version straight from
+      # ziglang.org.
+      - name: Install Zig 0.17.0
         run: |
-          curl -fsSL -o zig.tar.xz "https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz"
+          curl -fsSL -o zig.tar.xz "https://ziglang.org/download/0.17.0/zig-x86_64-linux-0.17.0.tar.xz"
           tar xf zig.tar.xz
-          echo "$PWD/zig-x86_64-linux-0.16.0" >> "$GITHUB_PATH"
+          echo "$PWD/zig-x86_64-linux-0.17.0" >> "$GITHUB_PATH"
 
       - name: Install SDL2
         run: |
@@ -25,7 +25,7 @@ jobs:
           sudo apt-get install -y libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libsdl2-mixer-dev
 
       - name: Formatting
-        run: zig fmt --check build.zig build src bindings
+        run: zig fmt --check build.zig build.zig.zon src bindings tools
 
       - name: Build
         run: zig build
@@ -46,11 +46,11 @@ jobs:
         with:
           python-version: "3.13"
 
-      - name: Install Zig 0.16.0
+      - name: Install Zig 0.17.0
         run: |
-          curl -fsSL -o zig.tar.xz "https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz"
+          curl -fsSL -o zig.tar.xz "https://ziglang.org/download/0.17.0/zig-x86_64-linux-0.17.0.tar.xz"
           tar xf zig.tar.xz
-          echo "$PWD/zig-x86_64-linux-0.16.0" >> "$GITHUB_PATH"
+          echo "$PWD/zig-x86_64-linux-0.17.0" >> "$GITHUB_PATH"
 
       - name: Install SDL2
         run: |

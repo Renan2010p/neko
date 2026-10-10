@@ -4,8 +4,7 @@ Thanks for helping! This is a small engine, so the rules are short.
 
 ## Requirements
 
-- **Zig 0.16.0** (`zig version` must print `0.16.0`; 0.17.0 is not supported
-  yet — it removed `std.Build` helpers Neko uses).
+- **Zig 0.17.0** (`zig version` must print `0.17.0`).
 - **SDL2** + `SDL2_ttf` / `SDL2_image` / `SDL2_mixer` for the desktop backend.
 - **Python 3** with development headers, only for `zig build python`.
 
@@ -21,7 +20,8 @@ zig build python     # the _neko CPython extension + pygame package
 
 ## Style
 
-- Run `zig fmt build.zig build src bindings` before committing. CI checks it.
+- Run `zig fmt build.zig build.zig.zon src bindings tools` before committing.
+  CI checks it.
 - 4-space indentation, snake_case functions, `SomeType` types, `.fields`.
 - Keep `src/core/**` free of OS calls: it may only import the abstract
   `Backend` (through `src/core/platform.zig`). Do not import `neko_backend`
