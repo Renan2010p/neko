@@ -17,6 +17,12 @@ pub const VTable: type = struct {
     supports_curved_panorama: *const fn (ptr: *anyopaque) bool = noopFalse,
     supports_offscreen_targets: *const fn (ptr: *anyopaque) bool = noopFalse,
     set_draw_offset: *const fn (ptr: *anyopaque, dx: i32, dy: i32) void = noopOffset,
+    /// The active renderer's name (e.g. "opengl"), or "".
+    render_name: *const fn (ptr: *anyopaque) []const u8 = noopName,
+    /// The renderers the backend can use. Caller frees.
+    renderers: *const fn (ptr: *anyopaque, allocator: std.mem.Allocator) []types.RenderInfo = noopRenderers,
+    /// Recreates the renderer with the named driver. False on failure.
+    set_renderer: *const fn (ptr: *anyopaque, name: []const u8) bool = noopSetRenderer,
 };
 
 fn noopTitle(ptr: *anyopaque, title: []const u8) void {
@@ -54,5 +60,22 @@ fn noopModes(ptr: *anyopaque, allocator: std.mem.Allocator) []types.DisplayMode 
 
 fn noopFalse(ptr: *anyopaque) bool {
     _ = ptr;
+    return false;
+}
+
+fn noopName(ptr: *anyopaque) []const u8 {
+    _ = ptr;
+    return "";
+}
+
+fn noopRenderers(ptr: *anyopaque, allocator: std.mem.Allocator) []types.RenderInfo {
+    _ = ptr;
+    _ = allocator;
+    return &.{};
+}
+
+fn noopSetRenderer(ptr: *anyopaque, name: []const u8) bool {
+    _ = ptr;
+    _ = name;
     return false;
 }

@@ -38,7 +38,7 @@ pub fn cModule(ctx: backend.Context, header: []const u8, extra_libs: []const []c
 
 /// The shared SDL platform module (`src/backend/SDL2/platform.zig`).
 pub fn platformModule(ctx: backend.Context, c_module: *Build.Module) *Build.Module {
-    return ctx.b.addModule("neko_sdl2_platform", .{
+    return backend.module(ctx, "neko_sdl2_platform", .{
         .root_source_file = ctx.b.path("src/backend/SDL2/platform.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
@@ -52,7 +52,7 @@ pub fn platformModule(ctx: backend.Context, c_module: *Build.Module) *Build.Modu
 
 /// The common render helpers module (`src/backend/SDL2/render/render.zig`).
 pub fn renderModule(ctx: backend.Context) *Build.Module {
-    return ctx.b.addModule("neko_sdl2_render", .{
+    return backend.module(ctx, "neko_sdl2_render", .{
         .root_source_file = ctx.b.path("src/backend/SDL2/render/render.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,

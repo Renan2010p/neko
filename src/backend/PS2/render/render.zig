@@ -171,13 +171,13 @@ pub const Ps2Engine: type = struct {
 
     tick_base: u64 = 0,
 
-    textures: [MAX_TEXTURES]TextureEntry = [_]TextureEntry{.{}} ** MAX_TEXTURES,
+    textures: [MAX_TEXTURES]TextureEntry = @splat(.{}),
     next_id: u32 = 1,
 
-    fonts: [MAX_FONTS]FontSlot = [_]FontSlot{.{}} ** MAX_FONTS,
+    fonts: [MAX_FONTS]FontSlot = @splat(.{}),
 
-    sounds: [MAX_SOUNDS]SoundEntry = [_]SoundEntry{.{}} ** MAX_SOUNDS,
-    channels: [MAX_CHANNELS]PlayChannel = [_]PlayChannel{.{}} ** MAX_CHANNELS,
+    sounds: [MAX_SOUNDS]SoundEntry = @splat(.{}),
+    channels: [MAX_CHANNELS]PlayChannel = @splat(.{}),
     next_sound_id: u32 = 1,
     audio_ok: bool = false,
     audio_master: i32 = 80,
@@ -1454,10 +1454,10 @@ pub fn run(main_fn: anytype) void {
     };
 
     const info: std.builtin.Type.Fn = @typeInfo(@TypeOf(main_fn)).@"fn";
-    if (info.params.len == 0) {
+    if (info.param_types.len == 0) {
         invoke(main_fn());
     } else {
-        const P: type = info.params[0].type.?;
+        const P: type = info.param_types[0].?;
         if (P == std.process.Init) {
             invoke(main_fn(init));
         } else if (P == std.process.Init.Minimal) {

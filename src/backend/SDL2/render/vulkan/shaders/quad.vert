@@ -7,7 +7,8 @@ layout(location = 1) in vec2 a_uv;
 layout(location = 0) out vec2 v_uv;
 
 layout(push_constant) uniform Push {
-    vec4 rect;  // x0, y_top, x1, y_bottom (NDC, Vulkan has Y down)
+    vec4 rect;   // x0, y_top, x1, y_bottom (NDC, Vulkan has Y down)
+    vec4 params; // free parameters for custom shaders
     float alpha;
 } pc;
 

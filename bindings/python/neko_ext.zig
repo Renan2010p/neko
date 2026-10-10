@@ -17,10 +17,7 @@ const std: type = @import("std");
 const neko: type = @import("neko");
 const pg: type = @import("neko_pygame");
 
-const c = @cImport({
-    @cDefine("PY_SSIZE_T_CLEAN", {});
-    @cInclude("Python.h");
-});
+const c = @import("c");
 
 const Allocator: type = std.mem.Allocator;
 
@@ -73,13 +70,13 @@ fn surfaceView(view: *const c.Py_buffer, w: u32, h: u32, alpha: u8) pg.Surface {
 
 /// The SDL key code for a `neko.Key` (matches pygame's `K_*` constants).
 fn keyCode(key: neko.Key) i32 {
-    const ordinal: i32 = @intFromEnum(key);
-    const letters: i32 = @intFromEnum(neko.Key.a);
-    const digits: i32 = @intFromEnum(neko.Key.number_0);
-    if (ordinal >= letters and ordinal <= @intFromEnum(neko.Key.z)) {
+    const ordinal: i32 = @backingInt(key);
+    const letters: i32 = @backingInt(neko.Key.a);
+    const digits: i32 = @backingInt(neko.Key.number_0);
+    if (ordinal >= letters and ordinal <= @backingInt(neko.Key.z)) {
         return @as(i32, 'a') + (ordinal - letters);
     }
-    if (ordinal >= digits and ordinal <= @intFromEnum(neko.Key.number_9)) {
+    if (ordinal >= digits and ordinal <= @backingInt(neko.Key.number_9)) {
         return @as(i32, '0') + (ordinal - digits);
     }
     return switch (key) {
@@ -306,8 +303,8 @@ fn pyGetEvents(_: [*c]c.PyObject, _: [*c]c.PyObject) callconv(.c) [*c]c.PyObject
             .key_down => |k| makeEvent(1, k.code, 0, 0, k.name),
             .key_up => |k| makeEvent(2, k.code, 0, 0, k.name),
             .mouse_motion => |m| makeEvent(3, m.x, m.y, 0, ""),
-            .mouse_button_down => |b| makeEvent(4, @intFromEnum(b.button) + 1, b.x, b.y, ""),
-            .mouse_button_up => |b| makeEvent(5, @intFromEnum(b.button) + 1, b.x, b.y, ""),
+            .mouse_button_down => |b| makeEvent(4, @backingInt(b.button) + 1, b.x, b.y, ""),
+            .mouse_button_up => |b| makeEvent(5, @backingInt(b.button) + 1, b.x, b.y, ""),
             .mouse_wheel => makeEvent(6, 0, 0, 0, ""),
         };
         if (item == null) {
@@ -348,9 +345,9 @@ fn makeEvent(kind: i32, a: i32, b: i32, cc: i32, name: []const u8) [*c]c.PyObjec
 fn pyKeyState(_: [*c]c.PyObject, _: [*c]c.PyObject) callconv(.c) [*c]c.PyObject {
     const list: [*c]c.PyObject = c.PyList_New(0);
     if (list == null) return null;
-    const fields = @typeInfo(neko.Key).@"enum".fields;
-    inline for (fields) |f| {
-        const k: neko.Key = @enumFromInt(f.value);
+    const key_info = @typeInfo(neko.Key).@"enum";
+    inline for (key_info.field_names, key_info.field_values) |_, value| {
+        const k: neko.Key = @fromBackingInt(@intCast(value));
         if (neko.input.key(k)) {
             _ = c.PyList_Append(list, c.PyLong_FromLong(keyCode(k)));
         }

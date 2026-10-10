@@ -192,6 +192,11 @@ pub const DisplayMode: type = struct {
     refresh_hz: i32,
 };
 
+/// One renderer a backend can use (e.g. "opengl", "vulkan", "software").
+pub const RenderInfo: type = struct {
+    name: []const u8,
+};
+
 /// Opaque handle to a GPU texture, or to an offscreen render target.
 pub const TextureHandle: type = struct {
     id: u32,
@@ -199,6 +204,11 @@ pub const TextureHandle: type = struct {
 
 /// Opaque handle to a loaded sound.
 pub const SoundHandle: type = struct {
+    id: u32,
+};
+
+/// Opaque handle to a compiled shader program.
+pub const ShaderHandle: type = struct {
     id: u32,
 };
 
@@ -215,6 +225,24 @@ pub const BackendKind: type = struct {
     pub fn eql(self: BackendKind, other: []const u8) bool {
         return std.mem.eql(u8, self.name, other);
     }
+};
+
+/// A Discord Rich Presence payload. Games fill this and hand it to
+/// `neko.net.discord_rich_presence.set`; the backend sends it to Discord when
+/// it is running. Empty strings and zero timestamps are omitted.
+pub const DiscordPresence: type = struct {
+    details: []const u8 = "",
+    state: []const u8 = "",
+    /// Unix seconds to show "elapsed"; 0 omits it.
+    start_timestamp: i64 = 0,
+    /// Unix seconds to show "remaining"; 0 omits it.
+    end_timestamp: i64 = 0,
+    large_image: []const u8 = "",
+    large_text: []const u8 = "",
+    small_image: []const u8 = "",
+    small_text: []const u8 = "",
+    party_size: u32 = 0,
+    party_max: u32 = 0,
 };
 
 /// Everything a backend needs to open a window and run.

@@ -19,4 +19,5 @@ test {
     _ = @import("../core/scene/scene.zig");
     _ = @import("../core/scene/script.zig");
     _ = @import("../core/scene/timer.zig");
+    _ = @import("../core/graphics/projection.zig");
 }

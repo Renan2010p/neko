@@ -37,7 +37,7 @@ var instance: HeadlessEngine = .{};
 pub const kind: engine.BackendKind = .{ .name = "headless" };
 
 /// The capabilities this backend declares. It provides only the loop.
-const caps_decl: engine.Capabilities = engine.Capabilities.initEmpty();
+const caps_decl: engine.Capabilities = engine.Capabilities.empty;
 
 /// Returns the backend as an abstract handle. Called by `src/core/platform.zig`.
 pub fn create() engine.Backend {

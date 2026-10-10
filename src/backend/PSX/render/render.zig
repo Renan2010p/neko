@@ -423,10 +423,10 @@ pub fn run(main_fn: anytype) void {
     };
 
     const info: std.builtin.Type.Fn = @typeInfo(@TypeOf(main_fn)).@"fn";
-    if (info.params.len == 0) {
+    if (info.param_types.len == 0) {
         invoke(main_fn());
     } else {
-        const P: type = info.params[0].type.?;
+        const P: type = info.param_types[0].?;
         if (P == std.process.Init) {
             invoke(main_fn(init));
         } else if (P == std.process.Init.Minimal) {

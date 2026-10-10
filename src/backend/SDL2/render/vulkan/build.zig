@@ -24,7 +24,7 @@ fn build(ctx: backend.Context) *Build.Module {
     const platform: *Build.Module = sdl2_common.platformModule(ctx, c_module);
     const render: *Build.Module = sdl2_common.renderModule(ctx);
 
-    const mod: *Build.Module = b.addModule("neko_backend", .{
+    const mod: *Build.Module = backend.module(ctx, "neko_backend", .{
         .root_source_file = b.path("src/backend/SDL2/render/vulkan/render.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,

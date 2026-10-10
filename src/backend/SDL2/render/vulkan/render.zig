@@ -38,6 +38,7 @@ const QUAD: [4]Vertex = .{
 
 const PushConsts: type = extern struct {
     rect: [4]f32, // x0, y_top, x1, y_bottom (NDC)
+    params: [4]f32, // free parameters for custom shaders
     alpha: f32,
 };
 
@@ -45,6 +46,8 @@ const vert_spv: [*]const u8 = @embedFile("shaders/quad_vert.spv");
 const vert_len: usize = @embedFile("shaders/quad_vert.spv").len;
 const frag_spv: [*]const u8 = @embedFile("shaders/quad_frag.spv");
 const frag_len: usize = @embedFile("shaders/quad_frag.spv").len;
+const cyl_frag_spv: [*]const u8 = @embedFile("shaders/cylinder_frag.spv");
+const cyl_frag_len: usize = @embedFile("shaders/cylinder_frag.spv").len;
 
 const VulkanEngine: type = struct {
     allocator: Allocator = undefined,
@@ -66,6 +69,9 @@ const VulkanEngine: type = struct {
     render_pass: c.VkRenderPass = null,
     pipeline_layout: c.VkPipelineLayout = null,
     pipeline: c.VkPipeline = null,
+    cyl_pipeline: c.VkPipeline = null,
+    use_cylinder: bool = false,
+    cyl_params: [4]f32 = .{ 0, 0, 0, 0 },
     framebuffers: []c.VkFramebuffer = &.{},
     desc_layout: c.VkDescriptorSetLayout = null,
     desc_pool: c.VkDescriptorPool = null,
@@ -111,10 +117,12 @@ pub const kind: engine.BackendKind = .{ .name = "sdl2-vulkan" };
 
 /// The capabilities this backend declares.
 const caps_decl: engine.Capabilities = blk: {
-    var set: engine.Capabilities = engine.Capabilities.initEmpty();
+    var set: engine.Capabilities = engine.Capabilities.empty;
     set.insert(.graphics2d);
     set.insert(.input);
     set.insert(.files);
+    set.insert(.discord);
+    set.insert(.shader);
     break :blk set;
 };
 
@@ -469,9 +477,30 @@ fn createRenderPass(self: *VulkanEngine) bool {
 }
 
 fn createGraphicsPipeline(self: *VulkanEngine) bool {
+    var push: c.VkPushConstantRange = .{
+        .stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT | c.VK_SHADER_STAGE_FRAGMENT_BIT,
+        .offset = 0,
+        .size = @sizeOf(PushConsts),
+    };
+    var layout_info: c.VkPipelineLayoutCreateInfo = .{
+        .sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = 1,
+        .pSetLayouts = &self.desc_layout,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges = &push,
+    };
+    if (!ok(c.vkCreatePipelineLayout(self.device, &layout_info, null, &self.pipeline_layout))) return false;
+
+    if (!buildPipeline(self, frag_spv, frag_len, &self.pipeline)) return false;
+    if (!buildPipeline(self, cyl_frag_spv, cyl_frag_len, &self.cyl_pipeline)) return false;
+    return true;
+}
+
+/// Builds one graphics pipeline with the shared vertex shader and `frag_data`.
+fn buildPipeline(self: *VulkanEngine, frag_data: [*]const u8, frag_size: usize, out: *c.VkPipeline) bool {
     const vert = createShaderModule(self, vert_spv, vert_len) orelse return false;
     defer c.vkDestroyShaderModule(self.device, vert, null);
-    const frag = createShaderModule(self, frag_spv, frag_len) orelse return false;
+    const frag = createShaderModule(self, frag_data, frag_size) orelse return false;
     defer c.vkDestroyShaderModule(self.device, frag, null);
 
     var stages = [_]c.VkPipelineShaderStageCreateInfo{
@@ -546,20 +575,6 @@ fn createGraphicsPipeline(self: *VulkanEngine) bool {
         .dynamicStateCount = dynamic_states.len,
         .pDynamicStates = &dynamic_states,
     };
-    var push: c.VkPushConstantRange = .{
-        .stageFlags = c.VK_SHADER_STAGE_VERTEX_BIT | c.VK_SHADER_STAGE_FRAGMENT_BIT,
-        .offset = 0,
-        .size = @sizeOf(PushConsts),
-    };
-    var layout_info: c.VkPipelineLayoutCreateInfo = .{
-        .sType = c.VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 1,
-        .pSetLayouts = &self.desc_layout,
-        .pushConstantRangeCount = 1,
-        .pPushConstantRanges = &push,
-    };
-    if (!ok(c.vkCreatePipelineLayout(self.device, &layout_info, null, &self.pipeline_layout))) return false;
-
     var pipeline_info: c.VkGraphicsPipelineCreateInfo = .{
         .sType = c.VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .stageCount = stages.len,
@@ -575,7 +590,7 @@ fn createGraphicsPipeline(self: *VulkanEngine) bool {
         .renderPass = self.render_pass,
         .subpass = 0,
     };
-    return ok(c.vkCreateGraphicsPipelines(self.device, null, 1, &pipeline_info, null, &self.pipeline));
+    return ok(c.vkCreateGraphicsPipelines(self.device, null, 1, &pipeline_info, null, out));
 }
 
 // ── Vtable ───────────────────────────────────────────────────────────────────
@@ -603,11 +618,20 @@ const vtable: engine.Backend.VTable = .{
     .draw_texture = vt_draw_texture,
     .draw_texture_rotated = vt_draw_texture_rotated,
     .texture_size = vt_texture_size,
+    .shader_load = vt_shader_load,
+    .shader_load_builtin = vt_shader_load_builtin,
+    .shader_free = vt_shader_free,
+    .shader_draw = vt_shader_draw,
     .mouse_pos = P.mouse_pos,
     .read_file = P.read_file,
     .write_file = P.write_file,
     .delete_file = P.delete_file,
     .file_exists = P.file_exists,
+    .discord_connect = P.discord_connect,
+    .discord_set = P.discord_set,
+    .discord_clear = P.discord_clear,
+    .discord_close = P.discord_close,
+    .discord_connected = P.discord_connected,
 };
 
 fn vt_init(ptr: *anyopaque, config: engine.Config) bool {
@@ -790,6 +814,7 @@ fn vt_shutdown(ptr: *anyopaque) void {
         if (self.desc_pool != null) c.vkDestroyDescriptorPool(self.device, self.desc_pool, null);
         if (self.desc_layout != null) c.vkDestroyDescriptorSetLayout(self.device, self.desc_layout, null);
         if (self.pipeline != null) c.vkDestroyPipeline(self.device, self.pipeline, null);
+        if (self.cyl_pipeline != null) c.vkDestroyPipeline(self.device, self.cyl_pipeline, null);
         if (self.pipeline_layout != null) c.vkDestroyPipelineLayout(self.device, self.pipeline_layout, null);
         if (self.render_pass != null) c.vkDestroyRenderPass(self.device, self.render_pass, null);
         if (self.tex_sampler != null) c.vkDestroySampler(self.device, self.tex_sampler, null);
@@ -877,14 +902,20 @@ fn vt_present(ptr: *anyopaque) void {
         c.vkCmdSetViewport(self.cmd, 0, 1, &viewport);
         var scissor: c.VkRect2D = .{ .offset = .{ .x = 0, .y = 0 }, .extent = self.swap_extent };
         c.vkCmdSetScissor(self.cmd, 0, 1, &scissor);
-        c.vkCmdBindPipeline(self.cmd, c.VK_PIPELINE_BIND_POINT_GRAPHICS, self.pipeline);
+        const cyl: bool = self.use_cylinder and self.cyl_pipeline != null;
+        c.vkCmdBindPipeline(self.cmd, c.VK_PIPELINE_BIND_POINT_GRAPHICS, if (cyl) self.cyl_pipeline else self.pipeline);
         var offset: c.VkDeviceSize = 0;
         c.vkCmdBindVertexBuffers(self.cmd, 0, 1, &self.vbuf, &offset);
         c.vkCmdBindDescriptorSets(self.cmd, c.VK_PIPELINE_BIND_POINT_GRAPHICS, self.pipeline_layout, 0, 1, &self.desc_set, 0, null);
-        var pc: PushConsts = .{ .rect = rectNdc(self), .alpha = self.draw_alpha };
+        var pc: PushConsts = .{
+            .rect = if (cyl) [4]f32{ -1, -1, 1, 1 } else rectNdc(self),
+            .params = self.cyl_params,
+            .alpha = if (cyl) 1.0 else self.draw_alpha,
+        };
         c.vkCmdPushConstants(self.cmd, self.pipeline_layout, c.VK_SHADER_STAGE_VERTEX_BIT | c.VK_SHADER_STAGE_FRAGMENT_BIT, 0, @sizeOf(PushConsts), &pc);
         c.vkCmdDraw(self.cmd, 4, 1, 0, 0);
     }
+    self.use_cylinder = false;
     c.vkCmdEndRenderPass(self.cmd);
     _ = c.vkEndCommandBuffer(self.cmd);
 
@@ -979,4 +1010,37 @@ fn vt_draw_texture_rotated(ptr: *anyopaque, tex: engine.TextureHandle, dst: engi
 fn vt_texture_size(ptr: *anyopaque, _: engine.TextureHandle) engine.Point {
     const self: *VulkanEngine = as_self(ptr);
     return .{ .x = @intCast(self.tex_w), .y = @intCast(self.tex_h) };
+}
+
+// ── Shaders ──────────────────────────────────────────────────────────────────
+
+/// The Vulkan presenter only ships the built-in "cylinder" shader (there is no
+/// runtime GLSL cross-compiler); arbitrary GLSL returns null.
+fn vt_shader_load(ptr: *anyopaque, vertex_src: []const u8, fragment_src: []const u8) ?engine.ShaderHandle {
+    _ = ptr;
+    _ = vertex_src;
+    _ = fragment_src;
+    return null;
+}
+
+fn vt_shader_load_builtin(ptr: *anyopaque, name: []const u8) ?engine.ShaderHandle {
+    _ = ptr;
+    if (std.mem.eql(u8, name, "cylinder")) return engine.ShaderHandle{ .id = ID_CYLINDER };
+    return null;
+}
+
+const ID_CYLINDER: u32 = 1;
+
+fn vt_shader_free(ptr: *anyopaque, shader: engine.ShaderHandle) void {
+    _ = ptr;
+    _ = shader; // built-in pipelines live for the backend's lifetime
+}
+
+fn vt_shader_draw(ptr: *anyopaque, shader: engine.ShaderHandle, _: engine.TextureHandle, params: [4]f32) void {
+    const self: *VulkanEngine = as_self(ptr);
+    if (shader.id != ID_CYLINDER) return;
+    self.use_cylinder = true;
+    self.cyl_params = params;
+    self.draw_rect = .{ .x = 0, .y = 0, .w = @intCast(self.sdl.logical_w), .h = @intCast(self.sdl.logical_h) };
+    self.has_draw = true;
 }

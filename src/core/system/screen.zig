@@ -90,6 +90,25 @@ pub fn display_modes(allocator: Allocator) []types.DisplayMode {
     return e.display_modes(allocator);
 }
 
+/// The active renderer's name (e.g. "opengl"), or "".
+pub fn render_name() []const u8 {
+    const e: backend.Backend = context.get() orelse return "";
+    return e.render_name();
+}
+
+/// The renderers this backend can switch between. Caller frees the result.
+pub fn renderers(allocator: Allocator) []types.RenderInfo {
+    const e: backend.Backend = context.get() orelse return &.{};
+    return e.renderers(allocator);
+}
+
+/// Recreates the renderer with the named driver (e.g. "opengl", "software").
+/// Returns false when unsupported or the driver failed.
+pub fn set_renderer(name: []const u8) bool {
+    const e: backend.Backend = context.get() orelse return false;
+    return e.set_renderer(name);
+}
+
 /// True where the platform can composite a curved panorama cheaply. False on
 /// systems without it (e.g. the PS2).
 pub fn supports_curved_panorama() bool {

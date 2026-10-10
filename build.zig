@@ -183,6 +183,9 @@ fn add_target_check(b: *Builder, optimize: builtin.OptimizeMode) *Builder.Step {
             .neko = neko_mod,
             .target = resolved,
             .optimize = optimize,
+            // The same backend is built for every target, so its modules must
+            // be private: publishing a name twice is an error in Zig 0.17.
+            .publish = false,
         };
         const backend_mod: *Builder.Module = headless.build(ctx);
         neko_mod.addImport("neko_backend", backend_mod);
@@ -221,6 +224,25 @@ fn add_freestanding_check(b: *Builder) *Builder.Step {
 
 // ── Python bindings ──────────────────────────────────────────────────────────
 
+/// The Python C API as a Zig module. `@cImport` was removed in Zig 0.17, so the
+/// header is run through `translate-c` and published under the `c` name.
+fn python_c_module(
+    b: *Builder,
+    target: Builder.ResolvedTarget,
+    optimize: builtin.OptimizeMode,
+    python_include: []const u8,
+) *Builder.Module {
+    const translate: *Builder.Step.TranslateC = b.addTranslateC(.{
+        .root_source_file = b.path("bindings/python/c.h"),
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    });
+    translate.addIncludePath(.{ .cwd_relative = python_include });
+    translate.defineCMacro("PY_SSIZE_T_CLEAN", null);
+    return translate.createModule();
+}
+
 /// Adds `zig build python`: the CPython extension `_neko` (in Zig) plus the
 /// pure-Python `pygame` package under `zig-out/python/`. Put that directory on
 /// `PYTHONPATH` to run pygame games on Neko.
@@ -246,6 +268,7 @@ fn add_python(
         .optimize = optimize,
         .link_libc = true,
         .imports = &.{
+            .{ .name = "c", .module = python_c_module(b, target, optimize, python_include) },
             .{ .name = "neko", .module = neko },
             .{ .name = "neko_pygame", .module = pygame },
         },
@@ -306,8 +329,8 @@ fn add_python(
 
     // `zig build python-demo` runs it against the freshly built engine.
     const demo: *Builder.Step.Run = b.addSystemCommand(&.{ "python3", "demo.py" });
-    demo.setEnvironmentVariable("PYTHONPATH", b.getInstallPath(.prefix, "python"));
-    demo.setCwd(.{ .cwd_relative = b.getInstallPath(.prefix, "python") });
+    demo.setEnvironmentVariable("PYTHONPATH", ".");
+    demo.setCwd(.{ .relative = .{ .base = .install_prefix, .sub_path = "python" } });
     demo.step.dependOn(&install_lib.step);
     demo.step.dependOn(&install_pkg.step);
     demo.step.dependOn(&install_demo.step);

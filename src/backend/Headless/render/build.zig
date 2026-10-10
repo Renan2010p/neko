@@ -15,12 +15,12 @@ pub const plugin: backend.Backend = .{
 };
 
 fn build(ctx: backend.Context) *Build.Module {
-    const platform: *Build.Module = ctx.b.addModule("neko_headless_platform", .{
+    const platform: *Build.Module = backend.module(ctx, "neko_headless_platform", .{
         .root_source_file = ctx.b.path("src/backend/Headless/platform.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,
     });
-    return ctx.b.addModule("neko_backend", .{
+    return backend.module(ctx, "neko_backend", .{
         .root_source_file = ctx.b.path("src/backend/Headless/render/render.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,

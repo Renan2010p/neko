@@ -20,7 +20,7 @@ fn build(ctx: backend.Context) *Build.Module {
     const c_module: *Build.Module = sdl2_common.cModule(ctx, "src/backend/SDL2/platform/c/SDL2.h", &.{});
     const platform: *Build.Module = sdl2_common.platformModule(ctx, c_module);
 
-    const mod: *Build.Module = b.addModule("neko_backend", .{
+    const mod: *Build.Module = backend.module(ctx, "neko_backend", .{
         .root_source_file = b.path("src/backend/SDL2/render/sdl/render.zig"),
         .target = ctx.target,
         .optimize = ctx.optimize,

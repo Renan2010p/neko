@@ -21,24 +21,20 @@ const std: type = @import("std");
 pub fn merge(comptime parts: []const type) type {
     comptime var count: usize = 0;
     inline for (parts) |Part| {
-        count += @typeInfo(Part).@"struct".fields.len;
+        count += @typeInfo(Part).@"struct".field_names.len;
     }
 
     var names: [count][]const u8 = undefined;
     var types: [count]type = undefined;
-    var attrs: [count]std.builtin.Type.StructField.Attributes = undefined;
+    var attrs: [count]std.lang.Type.Struct.FieldAttributes = undefined;
 
     comptime var index: usize = 0;
     inline for (parts) |Part| {
-        inline for (@typeInfo(Part).@"struct".fields) |field| {
-            const typed: std.builtin.Type.StructField = field;
-            names[index] = typed.name;
-            types[index] = typed.type;
-            attrs[index] = .{
-                .default_value_ptr = typed.default_value_ptr,
-                .@"comptime" = typed.is_comptime,
-                .@"align" = typed.alignment,
-            };
+        const info = @typeInfo(Part).@"struct";
+        inline for (info.field_names, info.field_types, info.field_attrs) |name, FieldType, attr| {
+            names[index] = name;
+            types[index] = FieldType;
+            attrs[index] = attr;
             index += 1;
         }
     }

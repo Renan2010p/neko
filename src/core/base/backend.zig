@@ -32,6 +32,7 @@ const audio_cap: type = @import("caps/audio.zig");
 const files_cap: type = @import("caps/files.zig");
 const input_cap: type = @import("caps/input.zig");
 const misc_cap: type = @import("caps/misc.zig");
+const discord_cap: type = @import("caps/discord.zig");
 
 /// A capability or optional feature a backend may declare.
 pub const Feature: type = features.Feature;
@@ -46,7 +47,7 @@ pub const Backend: type = struct {
     /// Optional 3D pipeline. `null` for 2D-only backends.
     render3d: ?*const render3d.VTable = null,
     /// The capabilities this backend declares. Empty when undeclared.
-    caps: Capabilities = Capabilities.initEmpty(),
+    caps: Capabilities = Capabilities.empty,
 
     /// The backend function table, folded from the capability modules under
     /// `caps/`. Every field has a no-op default, so a backend only names the
@@ -60,6 +61,7 @@ pub const Backend: type = struct {
         files_cap.VTable,
         input_cap.VTable,
         misc_cap.VTable,
+        discord_cap.VTable,
     });
 
     /// True when the backend declares `feature`.
@@ -141,6 +143,21 @@ pub const Backend: type = struct {
         self.vtable.set_draw_offset(self.ptr, dx, dy);
     }
 
+    /// The active renderer's name (e.g. "opengl"), or "".
+    pub fn render_name(self: Backend) []const u8 {
+        return self.vtable.render_name(self.ptr);
+    }
+
+    /// The renderers this backend can use. Caller frees the result.
+    pub fn renderers(self: Backend, allocator: Allocator) []types.RenderInfo {
+        return self.vtable.renderers(self.ptr, allocator);
+    }
+
+    /// Recreates the renderer with the named driver. Returns false on failure.
+    pub fn set_renderer(self: Backend, name: []const u8) bool {
+        return self.vtable.set_renderer(self.ptr, name);
+    }
+
     // ── Drawing primitives ───────────────────────────────────────────────
 
     pub fn clear(self: Backend, color: types.Color) void {
@@ -199,6 +216,29 @@ pub const Backend: type = struct {
 
     pub fn set_render_target(self: Backend, target: ?types.TextureHandle) void {
         self.vtable.set_render_target(self.ptr, target);
+    }
+
+    // ── Shaders ──────────────────────────────────────────────────────────
+
+    /// Compiles a vertex+fragment shader program, or null when unsupported.
+    pub fn shader_load(self: Backend, vertex_src: []const u8, fragment_src: []const u8) ?types.ShaderHandle {
+        return self.vtable.shader_load(self.ptr, vertex_src, fragment_src);
+    }
+
+    /// Loads a shader the backend ships itself, by name (e.g. "cylinder").
+    pub fn shader_load_builtin(self: Backend, name: []const u8) ?types.ShaderHandle {
+        return self.vtable.shader_load_builtin(self.ptr, name);
+    }
+
+    /// Frees a program returned by `shader_load`.
+    pub fn shader_free(self: Backend, shader: types.ShaderHandle) void {
+        self.vtable.shader_free(self.ptr, shader);
+    }
+
+    /// Draws a full-screen quad with `shader`, sampling `tex` on unit 0 and
+    /// passing `params` to the fragment shader as `u_params`.
+    pub fn shader_draw(self: Backend, shader: types.ShaderHandle, tex: types.TextureHandle, params: [4]f32) void {
+        self.vtable.shader_draw(self.ptr, shader, tex, params);
     }
 
     // ── Text ─────────────────────────────────────────────────────────────
@@ -281,5 +321,33 @@ pub const Backend: type = struct {
 
     pub fn update_discord(self: Backend, details: []const u8, state: []const u8) void {
         self.vtable.update_discord(self.ptr, details, state);
+    }
+
+    // ── Discord Rich Presence ────────────────────────────────────────────
+
+    /// Connects to the local Discord client. Returns false when Discord is not
+    /// running or the backend has no support.
+    pub fn discord_connect(self: Backend, client_id: []const u8) bool {
+        return self.vtable.discord_connect(self.ptr, client_id);
+    }
+
+    /// Sends a presence. Returns false when not connected.
+    pub fn discord_set(self: Backend, presence: types.DiscordPresence) bool {
+        return self.vtable.discord_set(self.ptr, presence);
+    }
+
+    /// Clears the current presence.
+    pub fn discord_clear(self: Backend) void {
+        self.vtable.discord_clear(self.ptr);
+    }
+
+    /// Closes the Discord connection.
+    pub fn discord_close(self: Backend) void {
+        self.vtable.discord_close(self.ptr);
+    }
+
+    /// True when connected to Discord.
+    pub fn discord_connected(self: Backend) bool {
+        return self.vtable.discord_connected(self.ptr);
     }
 };

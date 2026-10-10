@@ -27,12 +27,24 @@ pub const Context: type = struct {
     /// The engine module (the backend imports it as `neko`).
     neko: *Build.Module,
     target: Build.ResolvedTarget,
-    optimize: std.builtin.OptimizeMode,
+    optimize: std.lang.Optimize,
+    /// When true (the default) the backend modules are published under their
+    /// stable names, so a dependent package can fetch one with
+    /// `dependency.module("neko_backend")`. `zig build check-targets` compiles
+    /// the same backend many times and sets this to false to build private
+    /// modules instead: Zig 0.17 rejects two modules with the same name.
+    publish: bool = true,
     /// Optional system-library directories. Only the SDL2 backend uses them
     /// (Windows has no pkg-config); other backends can ignore them.
     sdl2_include: ?[]const u8 = null,
     sdl2_lib: ?[]const u8 = null,
 };
+
+/// Creates a backend module, published (findable by name) or private according
+/// to `Context.publish`.
+pub fn module(ctx: Context, name: []const u8, options: Build.Module.CreateOptions) *Build.Module {
+    return if (ctx.publish) ctx.b.addModule(name, options) else ctx.b.createModule(options);
+}
 
 /// A backend plugin.
 pub const Backend: type = struct {

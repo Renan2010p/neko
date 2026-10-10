@@ -7,6 +7,7 @@ layout(set = 0, binding = 0) uniform sampler2D u_tex;
 
 layout(push_constant) uniform Push {
     vec4 rect;
+    vec4 params;
     float alpha;
 } pc;
 

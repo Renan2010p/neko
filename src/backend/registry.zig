@@ -9,6 +9,7 @@ const backend: type = @import("plugin.zig");
 const sdl2: type = @import("SDL2/render/sdl/build.zig");
 const sdl2_opengl: type = @import("SDL2/render/opengl/build.zig");
 const sdl2_vulkan: type = @import("SDL2/render/vulkan/build.zig");
+const sdl3: type = @import("SDL3/render/sdl/build.zig");
 const ps2: type = @import("PS2/render/build.zig");
 const psx: type = @import("PSX/render/build.zig");
 const headless: type = @import("Headless/render/build.zig");
@@ -18,6 +19,7 @@ pub const all: []const backend.Backend = &.{
     sdl2.plugin,
     sdl2_opengl.plugin,
     sdl2_vulkan.plugin,
+    sdl3.plugin,
     ps2.plugin,
     psx.plugin,
     headless.plugin,

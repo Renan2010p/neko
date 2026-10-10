@@ -95,8 +95,10 @@ pub const Color: type = types.Color;
 pub const Rect: type = types.Rect;
 pub const Point: type = types.Point;
 pub const DisplayMode: type = types.DisplayMode;
+pub const RenderInfo: type = types.RenderInfo;
 pub const TextureHandle: type = types.TextureHandle;
 pub const SoundHandle: type = types.SoundHandle;
+pub const ShaderHandle: type = types.ShaderHandle;
 pub const Config: type = types.Config;
 pub const Vertex: type = types.Vertex;
 pub const BackendKind: type = types.BackendKind;
@@ -217,6 +219,11 @@ pub const debug: type = @import("core/system/debug.zig");
 pub const log: type = @import("core/system/log.zig");
 pub const save: type = @import("core/system/save.zig");
 
+// Integrations (talk to the outside world only through the backend).
+pub const net: type = @import("core/net.zig");
+pub const discord: type = net.discord_rich_presence;
+pub const DiscordPresence: type = types.DiscordPresence;
+
 // Graphics.
 pub const draw: type = @import("core/graphics/draw.zig");
 /// A 2D camera that scrolls the world on any backend.
@@ -227,6 +234,13 @@ pub const text: type = @import("core/graphics/text.zig");
 pub const sprite: type = @import("core/graphics/sprite.zig");
 pub const effect: type = @import("core/graphics/effect.zig");
 pub const render: type = @import("core/graphics/render.zig");
+/// A cylindrical panorama projection with inverse mapping (clickable hotspots
+/// inside the panorama). See `neko.projection`.
+pub const projection: type = @import("core/graphics/projection.zig");
+pub const Cylinder: type = projection.Cylinder;
+/// Runtime shader programs (capability-gated). See `neko.shader`.
+pub const shader: type = @import("core/graphics/shader.zig");
+pub const Shader: type = shader.Program;
 pub const render3d: type = @import("core/graphics/render3d.zig");
 pub const Render3dVTable: type = @import("core/base/render3d.zig").VTable;
 

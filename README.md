@@ -21,7 +21,7 @@ on the PlayStation 2 (gsKit + PS2SDK, freestanding).
 
 ## Requirements
 
-- Zig 0.16.0
+- Zig 0.17.0
 - SDL2, SDL2_ttf, SDL2_image, SDL2_mixer (for the desktop backend)
 
 ```sh

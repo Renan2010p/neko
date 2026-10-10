@@ -38,6 +38,8 @@ pub const Feature: type = enum {
     display_modes,
     /// The curved-panorama composite (`neko.render`).
     curved_panorama,
+    /// Runtime shader programs (`neko.shader`).
+    shader,
     /// Discord presence updates.
     discord,
 };

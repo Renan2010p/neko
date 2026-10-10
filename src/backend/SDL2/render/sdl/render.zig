@@ -71,7 +71,7 @@ pub const kind: engine.BackendKind = .{ .name = "sdl2" };
 
 /// The capabilities this backend declares.
 const caps_decl: engine.Capabilities = blk: {
-    var set: engine.Capabilities = engine.Capabilities.initEmpty();
+    var set: engine.Capabilities = engine.Capabilities.empty;
     set.insert(.graphics2d);
     set.insert(.text);
     set.insert(.audio);
@@ -82,6 +82,7 @@ const caps_decl: engine.Capabilities = blk: {
     set.insert(.geometry);
     set.insert(.display_modes);
     set.insert(.curved_panorama);
+    set.insert(.discord);
     break :blk set;
 };
 
@@ -108,6 +109,9 @@ const vtable: engine.Backend.VTable = .{
     .supports_curved_panorama = vt_supports_curved_panorama,
     .supports_offscreen_targets = vt_supports_offscreen_targets,
     .set_draw_offset = P.set_draw_offset,
+    .render_name = vt_render_name,
+    .renderers = vt_renderers,
+    .set_renderer = vt_set_renderer,
     .clear = vt_clear,
     .draw_rect = vt_draw_rect,
     .draw_line = vt_draw_line,
@@ -138,6 +142,11 @@ const vtable: engine.Backend.VTable = .{
     .file_exists = P.file_exists,
     .mouse_pos = P.mouse_pos,
     .update_discord = vt_update_discord,
+    .discord_connect = P.discord_connect,
+    .discord_set = P.discord_set,
+    .discord_clear = P.discord_clear,
+    .discord_close = P.discord_close,
+    .discord_connected = P.discord_connected,
 };
 
 fn as_self(ptr: *anyopaque) *Sdl2Engine {
@@ -191,7 +200,7 @@ fn default_font_path(self: *Sdl2Engine) ?[]u8 {
 
 /// Opens a font and stores it, returning its index (-1 on failure).
 fn open_font(self: *Sdl2Engine, path: []const u8, size: u16) i64 {
-    const z: [:0]u8 = self.allocator.dupeZ(u8, path) catch return -1;
+    const z: [:0]u8 = self.allocator.dupeSentinel(u8, path, 0) catch return -1;
     defer self.allocator.free(z);
 
     const font: ?*c.TTF_Font = c.TTF_OpenFont(z.ptr, size);
@@ -207,7 +216,7 @@ fn open_font(self: *Sdl2Engine, path: []const u8, size: u16) i64 {
 
 /// Renders `text` into a new texture. Caller owns the texture.
 fn render_text(self: *Sdl2Engine, font: *c.TTF_Font, text: []const u8, color: engine.Color, out_w: *c_int, out_h: *c_int) ?*c.SDL_Texture {
-    const z: [:0]u8 = self.allocator.dupeZ(u8, text) catch return null;
+    const z: [:0]u8 = self.allocator.dupeSentinel(u8, text, 0) catch return null;
     defer self.allocator.free(z);
 
     const sdl_color: c.SDL_Color = c.SDL_Color{
@@ -357,6 +366,59 @@ fn vt_set_resolution(ptr: *anyopaque, width: u32, height: u32) void {
     _ = c.SDL_RenderSetLogicalSize(self.renderer, @intCast(width), @intCast(height));
 }
 
+// ── Renderer selection ──────────────────────────────────────────────────────
+
+fn vt_render_name(ptr: *anyopaque) []const u8 {
+    const self: *Sdl2Engine = as_self(ptr);
+    if (self.renderer == null) return "";
+    var info: c.SDL_RendererInfo = undefined;
+    if (c.SDL_GetRendererInfo(self.renderer, &info) != 0) return "";
+    if (info.name == null) return "";
+    return std.mem.span(info.name);
+}
+
+fn vt_renderers(ptr: *anyopaque, allocator: std.mem.Allocator) []engine.RenderInfo {
+    _ = ptr;
+    const n: c_int = c.SDL_GetNumRenderDrivers();
+    if (n <= 0) return &.{};
+    const out: []engine.RenderInfo = allocator.alloc(engine.RenderInfo, @intCast(n)) catch return &.{};
+    var count: usize = 0;
+    var i: c_int = 0;
+    while (i < n) : (i += 1) {
+        var info: c.SDL_RendererInfo = undefined;
+        if (c.SDL_GetRenderDriverInfo(i, &info) != 0) continue;
+        if (info.name == null) continue;
+        out[count] = engine.RenderInfo{ .name = std.mem.span(info.name) };
+        count += 1;
+    }
+    return out[0..count];
+}
+
+fn vt_set_renderer(ptr: *anyopaque, name: []const u8) bool {
+    const self: *Sdl2Engine = as_self(ptr);
+
+    if (self.renderer != null) {
+        _ = c.SDL_RenderSetLogicalSize(self.renderer, 0, 0);
+        c.SDL_DestroyRenderer(self.renderer);
+        self.renderer = null;
+    }
+    destroy_textures(self);
+    destroy_text_cache(self);
+    engine.sprite.clear_cache();
+
+    const z: [:0]u8 = self.allocator.dupeSentinel(u8, name, 0) catch return false;
+    defer self.allocator.free(z);
+    _ = c.SDL_SetHint("SDL_RENDER_DRIVER", z.ptr);
+
+    if (!create_renderer(self, self.sdl.vsync)) {
+        _ = c.SDL_ResetHint("SDL_RENDER_DRIVER");
+        if (!create_renderer(self, false)) return false;
+    }
+    _ = c.SDL_SetRenderDrawBlendMode(self.renderer, c.SDL_BLENDMODE_BLEND);
+    _ = c.SDL_RenderSetLogicalSize(self.renderer, @intCast(self.sdl.logical_w), @intCast(self.sdl.logical_h));
+    return true;
+}
+
 fn vt_supports_curved_panorama(ptr: *anyopaque) bool {
     _ = ptr;
     return true;
@@ -438,7 +500,7 @@ fn vt_draw_circle(ptr: *anyopaque, cx: i32, cy: i32, radius: i32, color: engine.
 fn vt_load_texture(ptr: *anyopaque, path: []const u8) ?engine.TextureHandle {
     const self: *Sdl2Engine = as_self(ptr);
 
-    const z: [:0]u8 = self.allocator.dupeZ(u8, path) catch return null;
+    const z: [:0]u8 = self.allocator.dupeSentinel(u8, path, 0) catch return null;
     defer self.allocator.free(z);
 
     const surf: [*c]c.SDL_Surface = c.IMG_Load(z.ptr);
@@ -721,7 +783,7 @@ fn vt_text_size(ptr: *anyopaque, text: []const u8, font_idx: u32) ?engine.Point 
     const self: *Sdl2Engine = as_self(ptr);
     if (font_idx >= self.fonts.items.len) return null;
 
-    const z: [:0]u8 = self.allocator.dupeZ(u8, text) catch return null;
+    const z: [:0]u8 = self.allocator.dupeSentinel(u8, text, 0) catch return null;
     defer self.allocator.free(z);
 
     var w: c_int = 0;
@@ -735,7 +797,7 @@ fn vt_text_size(ptr: *anyopaque, text: []const u8, font_idx: u32) ?engine.Point 
 fn vt_load_sound(ptr: *anyopaque, path: []const u8) ?engine.SoundHandle {
     const self: *Sdl2Engine = as_self(ptr);
 
-    const z: [:0]u8 = self.allocator.dupeZ(u8, path) catch return null;
+    const z: [:0]u8 = self.allocator.dupeSentinel(u8, path, 0) catch return null;
     defer self.allocator.free(z);
 
     const chunk: [*c]c.Mix_Chunk = c.Mix_LoadWAV(z.ptr);

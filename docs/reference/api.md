@@ -402,6 +402,32 @@ On any `*Node` you also have `node.getChild("Name")`, `node.find("Name")` and
 
 See [godot.md](../guide/godot.md) for the full Godot → Neko mapping.
 
+## `neko.net.discord_rich_presence`
+
+Shows the game on Discord. It talks to the Discord desktop client over its
+local IPC socket; when Discord is not running (or the backend has no support)
+every call is a safe no-op.
+
+- `connect(client_id) bool` — your Discord application id
+- `set(presence) bool`
+- `clear()`, `close()`, `connected() bool`
+
+`presence` is `neko.DiscordPresence`: `details`, `state`,
+`start_timestamp`/`end_timestamp` (Unix seconds), `large_image`/`large_text`,
+`small_image`/`small_text`, `party_size`/`party_max`. Empty fields are omitted.
+
+```zig
+_ = neko.net.discord_rich_presence.connect("123456789012345678");
+_ = neko.net.discord_rich_presence.set(.{
+    .details = "Race · NARA COAST",
+    .state = "Lap 1/3",
+    .large_image = "rengear",
+    .large_text = "RENGEAR",
+});
+```
+
+Also available as `neko.discord`.
+
 ## `neko.platform`
 
 Advanced. The backend seam (`backend_kind`, `Backend`, `create()`); most games

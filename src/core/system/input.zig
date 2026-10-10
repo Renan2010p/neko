@@ -42,13 +42,13 @@ var frame_count: usize = 0;
 var frame_index: usize = 0;
 var in_frame: bool = false;
 
-var keys_down: KeySet = KeySet.initEmpty();
-var keys_pressed: KeySet = KeySet.initEmpty();
-var keys_released: KeySet = KeySet.initEmpty();
+var keys_down: KeySet = KeySet.empty;
+var keys_pressed: KeySet = KeySet.empty;
+var keys_released: KeySet = KeySet.empty;
 
-var buttons_down: ButtonSet = ButtonSet.initEmpty();
-var buttons_pressed: ButtonSet = ButtonSet.initEmpty();
-var buttons_released: ButtonSet = ButtonSet.initEmpty();
+var buttons_down: ButtonSet = ButtonSet.empty;
+var buttons_pressed: ButtonSet = ButtonSet.empty;
+var buttons_released: ButtonSet = ButtonSet.empty;
 
 var mouse_pos_value: types.Point = .{};
 var wheel_value: f32 = 0;
@@ -62,10 +62,10 @@ pub fn beginFrame() void {
     frame_count = 0;
     frame_index = 0;
     wheel_value = 0;
-    keys_pressed = KeySet.initEmpty();
-    keys_released = KeySet.initEmpty();
-    buttons_pressed = ButtonSet.initEmpty();
-    buttons_released = ButtonSet.initEmpty();
+    keys_pressed = KeySet.empty;
+    keys_released = KeySet.empty;
+    buttons_pressed = ButtonSet.empty;
+    buttons_released = ButtonSet.empty;
     in_frame = true;
 
     const e: backend.Backend = context.get() orelse return;
@@ -214,7 +214,7 @@ pub fn Actions(comptime E: type) type {
 
         /// Binds `action` to `sources`, replacing any previous binding.
         pub fn bind(self: *Self, action: E, sources: []const Source) void {
-            const i: usize = @intFromEnum(action);
+            const i: usize = @backingInt(action);
             const n: usize = @min(sources.len, max_sources);
             var j: usize = 0;
             while (j < n) : (j += 1) {
@@ -224,7 +224,7 @@ pub fn Actions(comptime E: type) type {
         }
 
         fn matches(self: *const Self, action: E, mode: Match) bool {
-            const slot: Slot = self.slots[@intFromEnum(action)];
+            const slot: Slot = self.slots[@backingInt(action)];
             for (slot.sources[0..slot.len]) |source| {
                 switch (source) {
                     .key => |k| switch (mode) {

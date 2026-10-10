@@ -2,7 +2,7 @@
 
 ## Requirements
 
-- **Zig 0.16.0** (the version the engine is written against).
+- **Zig 0.17.0** (the version the engine is written against).
 - For the desktop backend: SDL2 development packages for **SDL2**, **SDL2_ttf**,
   **SDL2_image** and **SDL2_mixer**.
 

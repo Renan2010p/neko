@@ -145,11 +145,13 @@ pub const kind: engine.BackendKind = .{ .name = "sdl2-opengl" };
 
 /// The capabilities this backend declares.
 const caps_decl: engine.Capabilities = blk: {
-    var set: engine.Capabilities = engine.Capabilities.initEmpty();
+    var set: engine.Capabilities = engine.Capabilities.empty;
     set.insert(.graphics2d);
     set.insert(.input);
     set.insert(.files);
     set.insert(.graphics3d);
+    set.insert(.discord);
+    set.insert(.shader);
     break :blk set;
 };
 
@@ -273,7 +275,7 @@ fn r3d_draw(ptr: *anyopaque, mesh_kind: engine.mesh3d.Kind, model: engine.Mat4, 
     const self: *OpenglEngine = as_self(ptr);
     if (self.prog3d == 0) return;
 
-    const i: usize = @intFromEnum(mesh_kind);
+    const i: usize = @backingInt(mesh_kind);
     gl.glUseProgram(self.prog3d);
     gl.glUniformMatrix4fv(self.u3d_model, 1, gl.GL_FALSE, &model.m);
     gl.glUniform4f(
@@ -321,11 +323,19 @@ const vtable: engine.Backend.VTable = .{
     .draw_texture = vt_draw_texture,
     .draw_texture_rotated = vt_draw_texture_rotated,
     .texture_size = vt_texture_size,
+    .shader_load = vt_shader_load,
+    .shader_free = vt_shader_free,
+    .shader_draw = vt_shader_draw,
     .mouse_pos = P.mouse_pos,
     .read_file = P.read_file,
     .write_file = P.write_file,
     .delete_file = P.delete_file,
     .file_exists = P.file_exists,
+    .discord_connect = P.discord_connect,
+    .discord_set = P.discord_set,
+    .discord_clear = P.discord_clear,
+    .discord_close = P.discord_close,
+    .discord_connected = P.discord_connected,
 };
 
 fn vt_init(ptr: *anyopaque, config: engine.Config) bool {
@@ -467,4 +477,38 @@ fn vt_texture_size(ptr: *anyopaque, tex: engine.TextureHandle) engine.Point {
     const self: *OpenglEngine = as_self(ptr);
     const size = self.sizes.get(tex.id) orelse return .{};
     return .{ .x = @intCast(size[0]), .y = @intCast(size[1]) };
+}
+
+// ── Shaders ──────────────────────────────────────────────────────────────────
+
+fn vt_shader_load(ptr: *anyopaque, vertex_src: []const u8, fragment_src: []const u8) ?engine.ShaderHandle {
+    const self: *OpenglEngine = as_self(ptr);
+    const vs = self.allocator.dupeSentinel(u8, vertex_src, 0) catch return null;
+    defer self.allocator.free(vs);
+    const fs = self.allocator.dupeSentinel(u8, fragment_src, 0) catch return null;
+    defer self.allocator.free(fs);
+    const prog = linkProgramFrom(vs.ptr, fs.ptr) orelse return null;
+    return engine.ShaderHandle{ .id = prog };
+}
+
+fn vt_shader_free(ptr: *anyopaque, shader: engine.ShaderHandle) void {
+    _ = ptr;
+    const prog: gl.GLuint = @intCast(shader.id);
+    if (prog != 0) gl.glDeleteProgram(prog);
+}
+
+fn vt_shader_draw(ptr: *anyopaque, shader: engine.ShaderHandle, tex: engine.TextureHandle, params: [4]f32) void {
+    const self: *OpenglEngine = as_self(ptr);
+    const prog: gl.GLuint = @intCast(shader.id);
+    if (prog == 0) return;
+
+    gl.glUseProgram(prog);
+    gl.glActiveTexture(gl.GL_TEXTURE0);
+    gl.glBindTexture(gl.GL_TEXTURE_2D, glTextureFor(tex));
+    var loc: gl.GLint = gl.glGetUniformLocation(prog, "u_tex");
+    if (loc >= 0) gl.glUniform1i(loc, 0);
+    loc = gl.glGetUniformLocation(prog, "u_params");
+    if (loc >= 0) gl.glUniform4f(loc, params[0], params[1], params[2], params[3]);
+    gl.glBindVertexArray(self.vao);
+    gl.glDrawArrays(gl.GL_TRIANGLE_STRIP, 0, 4);
 }

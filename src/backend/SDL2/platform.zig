@@ -19,6 +19,7 @@ const std: type = @import("std");
 const c: type = @import("c");
 const engine: type = @import("neko");
 const keys: type = @import("platform/keys.zig");
+const discord_mod: type = @import("discord.zig");
 
 const Allocator: type = std.mem.Allocator;
 const mem: type = std.mem;
@@ -34,6 +35,8 @@ pub const Sdl: type = struct {
     logical_h: u32 = 0,
     running: bool = false,
     vsync: bool = false,
+    /// Discord Rich Presence (best effort).
+    discord: discord_mod.Client = .{},
 
     /// Stores the bootstrap data and brings up SDL with `init_flags`.
     ///
@@ -50,7 +53,7 @@ pub const Sdl: type = struct {
     /// Creates the window with `window_flags`, applies fullscreen and records
     /// the logical size and the running flag.
     pub fn openWindow(self: *Sdl, config: engine.Config, window_flags: c.Uint32) bool {
-        const title_z: [:0]u8 = self.allocator.dupeZ(u8, config.title) catch return false;
+        const title_z: [:0]u8 = self.allocator.dupeSentinel(u8, config.title, 0) catch return false;
         defer self.allocator.free(title_z);
 
         self.window = c.SDL_CreateWindow(
@@ -77,6 +80,7 @@ pub const Sdl: type = struct {
     /// Destroys the window and releases the copied assets directory. Does not
     /// call `SDL_Quit`; the backend quits its own subsystems first.
     pub fn closeWindow(self: *Sdl) void {
+        self.discord.close();
         if (self.window != null) {
             c.SDL_DestroyWindow(self.window);
             self.window = null;
@@ -92,7 +96,7 @@ pub const Sdl: type = struct {
 
     pub fn setTitle(self: *Sdl, title: []const u8) void {
         if (self.window == null) return;
-        const z: [:0]u8 = self.allocator.dupeZ(u8, title) catch return;
+        const z: [:0]u8 = self.allocator.dupeSentinel(u8, title, 0) catch return;
         defer self.allocator.free(z);
         c.SDL_SetWindowTitle(self.window, z.ptr);
     }
@@ -192,6 +196,28 @@ pub const Sdl: type = struct {
         const file: std.Io.File = dir.openFile(io, file_name, .{}) catch return false;
         file.close(io);
         return true;
+    }
+
+    // ── Discord Rich Presence ────────────────────────────────────────────
+
+    pub fn discordConnect(self: *Sdl, client_id: []const u8) bool {
+        return self.discord.connect(self.io, client_id);
+    }
+
+    pub fn discordSet(self: *Sdl, presence: engine.DiscordPresence) bool {
+        return self.discord.set(presence);
+    }
+
+    pub fn discordClear(self: *Sdl) void {
+        self.discord.clear();
+    }
+
+    pub fn discordClose(self: *Sdl) void {
+        self.discord.close();
+    }
+
+    pub fn discordConnected(self: *Sdl) bool {
+        return self.discord.isConnected();
     }
 };
 
@@ -323,6 +349,26 @@ pub fn adapter(comptime Owner: type, comptime field_name: []const u8) type {
 
         pub fn file_exists(ptr: *anyopaque, dir_path: []const u8, file_name: []const u8) bool {
             return sdl(ptr).fileExists(dir_path, file_name);
+        }
+
+        pub fn discord_connect(ptr: *anyopaque, client_id: []const u8) bool {
+            return sdl(ptr).discordConnect(client_id);
+        }
+
+        pub fn discord_set(ptr: *anyopaque, presence: engine.DiscordPresence) bool {
+            return sdl(ptr).discordSet(presence);
+        }
+
+        pub fn discord_clear(ptr: *anyopaque) void {
+            sdl(ptr).discordClear();
+        }
+
+        pub fn discord_close(ptr: *anyopaque) void {
+            sdl(ptr).discordClose();
+        }
+
+        pub fn discord_connected(ptr: *anyopaque) bool {
+            return sdl(ptr).discordConnected();
         }
     };
 }

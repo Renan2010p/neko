@@ -8,6 +8,12 @@ All notable changes to Neko are documented here. The format follows
 
 ### Added
 
+- **`neko.net.discord_rich_presence`**: Discord Rich Presence over the local
+  Discord IPC socket. `connect(client_id)`, `set(neko.DiscordPresence{ … })`
+  (details, state, timestamps, assets, party), `clear()`, `close()`,
+  `connected()`. Implemented by the SDL2 backends (best effort; no-op when
+  Discord is not running) and by a `discord` backend capability that defaults to
+  no-op on every other backend, so the core stays freestanding.
 - **2D ergonomics** (see [`docs/architecture/api-2d.md`](docs/architecture/api-2d.md)):
   - `neko.input.Actions(E)` — type-safe, per-instance input actions
     (`bind`, `held`, `justPressed`, `justReleased`, `axis`).
@@ -46,6 +52,18 @@ All notable changes to Neko are documented here. The format follows
   layout) with translations, rotations, `lookAt`, GL/Vulkan perspective and
   transforms. `neko.math` now also re-exports `Vec3`/`Mat4`. This is the base
   for the 3D work described in [`docs/ursina.md`](docs/ursina.md).
+- **`sdl3` backend** (`-Dbackend=sdl3`): a desktop presenter on SDL3 +
+  SDL3_ttf/image/mixer. It uses the same `SDL_Renderer` model as `sdl2`; games
+  can pick the driver at runtime (OpenGL, OpenGL ES, Vulkan, software), and the
+  backend recreates the window when a driver needs it (Vulkan). On Wayland the
+  window title is re-applied after the surface is mapped, working around an SDL3
+  bug that mangles a title set before the window is shown.
+- **Custom shaders and cylindrical projection**: `neko.shader` (`load`,
+  `load_builtin`, `load_files`, `Program.draw`) lets a game supply its own GLSL
+  from its own package, and `neko.projection.Cylinder`
+  (`composite_mesh`/`composite_shader`) composites a panorama from cylindrical
+  slices. Implemented by the OpenGL and Vulkan presenters; a portable
+  per-column CPU mesh is the fallback. `Backend.supports(.shader)` reports it.
 
 - **Pluggable backend plugins**: backends are registered in
   `build/backends.zig`; adding one no longer touches `build.zig`. `zig build
@@ -77,6 +95,14 @@ All notable changes to Neko are documented here. The format follows
 
 ### Changed
 
+- **Zig 0.17.0**: the engine and its tests build on Zig 0.17.0. This updated the
+  build system (`std.Build.Module.createModule` for the backend modules,
+  `LazyPath.zig_lib`/`addDirectoryArg2` instead of `getInstallPath`, renamed
+  run-step arg helpers), the type-info usage (struct-of-arrays `field_names`/
+  `field_types`, `Fn.param_types`), `dupeZ` → `dupeSentinel`, the
+  `std.enums.EnumSet.empty` rename, and the SDL2 Discord client
+  (`net_read`/`net_write` operations). The Python bindings no longer use the
+  removed `@cImport` (a `translate-c` module now provides `c`).
 - **Backend kind decoupled from the core**: `neko.BackendKind` is now just a
   name declared by each backend (`.{ .name = "sdl2" }`) instead of a core enum,
   so adding a backend no longer edits `src/core/**`. A new

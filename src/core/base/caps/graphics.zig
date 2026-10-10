@@ -19,6 +19,15 @@ pub const VTable: type = struct {
     texture_size: *const fn (ptr: *anyopaque, tex: types.TextureHandle) types.Point = noopTextureSize,
     geometry: *const fn (ptr: *anyopaque, tex: types.TextureHandle, vertices: []const types.Vertex, indices: []const i32) void = noopGeometry,
     set_render_target: *const fn (ptr: *anyopaque, target: ?types.TextureHandle) void = noopTarget,
+    /// Compiles a vertex+fragment shader program (null when unsupported).
+    shader_load: *const fn (ptr: *anyopaque, vertex_src: []const u8, fragment_src: []const u8) ?types.ShaderHandle = noopShaderLoad,
+    /// Loads a shader the backend ships itself, by name ("cylinder").
+    shader_load_builtin: *const fn (ptr: *anyopaque, name: []const u8) ?types.ShaderHandle = noopShaderLoadBuiltin,
+    /// Frees a shader program.
+    shader_free: *const fn (ptr: *anyopaque, shader: types.ShaderHandle) void = noopShaderFree,
+    /// Draws a full-screen quad with `shader`, sampling `tex` (unit 0) and
+    /// passing `params` as `u_params`.
+    shader_draw: *const fn (ptr: *anyopaque, shader: types.ShaderHandle, tex: types.TextureHandle, params: [4]f32) void = noopShaderDraw,
 };
 
 fn noopColor(ptr: *anyopaque, color: types.Color) void {
@@ -112,4 +121,29 @@ fn noopGeometry(ptr: *anyopaque, tex: types.TextureHandle, vertices: []const typ
 fn noopTarget(ptr: *anyopaque, target: ?types.TextureHandle) void {
     _ = ptr;
     _ = target;
+}
+
+fn noopShaderLoad(ptr: *anyopaque, vertex_src: []const u8, fragment_src: []const u8) ?types.ShaderHandle {
+    _ = ptr;
+    _ = vertex_src;
+    _ = fragment_src;
+    return null;
+}
+
+fn noopShaderLoadBuiltin(ptr: *anyopaque, name: []const u8) ?types.ShaderHandle {
+    _ = ptr;
+    _ = name;
+    return null;
+}
+
+fn noopShaderFree(ptr: *anyopaque, shader: types.ShaderHandle) void {
+    _ = ptr;
+    _ = shader;
+}
+
+fn noopShaderDraw(ptr: *anyopaque, shader: types.ShaderHandle, tex: types.TextureHandle, params: [4]f32) void {
+    _ = ptr;
+    _ = shader;
+    _ = tex;
+    _ = params;
 }
