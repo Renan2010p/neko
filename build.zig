@@ -243,6 +243,25 @@ fn python_c_module(
     return translate.createModule();
 }
 
+/// Asks the `python3` on `PATH` for its include directory, so the bindings are
+/// built against the interpreter that will import them (`actions/setup-python`
+/// and distro Pythons disagree on the version-stamped path). Falls back to the
+/// version-stamped system path when `python3` is unavailable.
+fn detect_python_include(b: *Builder) []const u8 {
+    const result: Builder.RunResult = b.runFallible(
+        &.{ "python3", "-c", "import sysconfig; print(sysconfig.get_path('include'))" },
+        .{ .stderr_behavior = .ignore },
+    );
+    switch (result) {
+        .success => |stdout| {
+            const include: []const u8 = std.mem.trim(u8, stdout, " \t\r\n");
+            if (include.len != 0) return include;
+        },
+        else => {},
+    }
+    return "/usr/include/python3.14";
+}
+
 /// Adds `zig build python`: the CPython extension `_neko` (in Zig) plus the
 /// pure-Python `pygame` package under `zig-out/python/`. Put that directory on
 /// `PYTHONPATH` to run pygame games on Neko.
@@ -259,8 +278,8 @@ fn add_python(
     const python_include: []const u8 = b.option(
         []const u8,
         "python-include",
-        "Directory containing Python.h (default: /usr/include/python3.14)",
-    ) orelse "/usr/include/python3.14";
+        "Directory containing Python.h (default: detected from python3)",
+    ) orelse detect_python_include(b);
 
     const ext_module: *Builder.Module = b.createModule(.{
         .root_source_file = b.path("bindings/python/neko_ext.zig"),
