@@ -1,37 +1,67 @@
 # Neko
 
 [![ci](https://github.com/Renan2010p/neko/actions/workflows/ci.yml/badge.svg)](https://github.com/Renan2010p/neko/actions/workflows/ci.yml)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-blue.svg)](LICENSE)
+[![Zig 0.17](https://img.shields.io/badge/zig-0.17.0-f7a41d.svg)](https://ziglang.org)
 
-A small, general-purpose 2D game engine for Zig, with pluggable backends.
+A small, general-purpose **2D game engine for Zig**, with pluggable backends.
 
 Neko gives your game one platform-agnostic API — `neko.draw`, `neko.text`,
-`neko.sprite`, `neko.effect`, `neko.sound`, `neko.input`, … — and hides the
-platform behind a backend. The same engine core runs on the desktop (SDL2) and
-on the PlayStation 2 (gsKit + PS2SDK, freestanding).
+`neko.sprite`, `neko.sound`, `neko.input`, … — and hides the platform behind a
+backend. The same core runs on the desktop (**SDL2** / **SDL3**) and on
+freestanding targets (**PlayStation 2**, **PlayStation 1**, **headless**).
 
-- Easy to start: a `Game` struct plus `neko.app.run` is a whole game.
-- 2D-friendly: input actions (`neko.input.Actions`), an asset registry with
+## Contents
+
+- [Features](#features)
+- [Made with Neko](#made-with-neko)
+- [Requirements](#requirements)
+- [A whole game](#a-whole-game)
+- [Using it from a game](#using-it-from-a-game)
+- [pygame compatibility](#pygame-compatibility)
+- [Backends are plugins](#backends-are-plugins)
+- [Working on the engine](#working-on-the-engine)
+- [Layout](#layout)
+- [License](#license)
+
+## Features
+
+- **Easy to start** — a `Game` struct plus `neko.app.run` is a whole game.
+- **2D-friendly** — input actions (`neko.input.Actions`), an asset registry with
   visible errors (`neko.assets`), a camera (`neko.Camera2D`) and animation clips
   (`neko.scene.Animator`).
-- Modular: `src/core/**` never touches the OS; backends do the heavy lifting.
-- Pluggable: a backend is a plugin registered in `src/backend/registry.zig`; adding
-  one never touches `build.zig` or the core.
-- Documented: a guide in [`docs/`](docs/README.md).
-- Portable: hosted and freestanding targets share the same core.
+- **Modular** — `src/core/**` never touches the OS; backends do the heavy lifting.
+- **Pluggable** — a backend is a plugin registered in
+  `src/backend/registry.zig`; adding one never touches `build.zig` or the core.
+- **Documented** — a guide in [`docs/`](docs/README.md).
+- **Portable** — hosted and freestanding targets share the same core.
+
+## Made with Neko
+
+**Five Nights With Friends — Classic Edition** — a native Zig game built on Neko
+([`fnwf`](https://github.com/Renan2010p/fnwf)):
+
+| Office | Security monitor |
+|--------|------------------|
+| ![Five Nights With Friends — office](docs/screenshots/fnwf_classic_office.png) | ![Five Nights With Friends — security monitor](docs/screenshots/fnwf_classic_monitor.png) |
+
+More, including the pygame games **RENGEAR** and **VESPER** running through the
+Python bindings, in [`docs/screenshots/`](docs/screenshots).
 
 ## Requirements
 
-- Zig 0.17.0
-- SDL2, SDL2_ttf, SDL2_image, SDL2_mixer (for the desktop backend)
+- **Zig 0.17.0**
+- **SDL2** or **SDL3**, each with `_ttf` / `_image` / `_mixer` (desktop backends)
 
 ```sh
-sudo apt install libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libsdl2-mixer-dev
+# Void Linux — SDL2
+sudo xbps-install -S SDL2-devel SDL2_ttf-devel SDL2_image-devel SDL2_mixer-devel
+
+# Void Linux — SDL3
+sudo xbps-install -S SDL3-devel SDL3_ttf-devel SDL3_image-devel SDL3_mixer-devel
 ```
 
-Desktop backends: `sdl2` (SDL_Renderer, the default), `sdl2-opengl`
-(SDL2 window + OpenGL presenter) and `sdl2-vulkan` (SDL2 window + Vulkan
-presenter). The GL/Vulkan presenters target the pygame translation layer and
-need:
+The OpenGL and Vulkan presenters additionally need:
 
 - OpenGL: `libGL`
 - Vulkan: `vulkan-loader` + `Vulkan-Headers` (headers `vulkan/vulkan.h`)
@@ -82,17 +112,21 @@ Add the dependency to your `build.zig.zon`:
 
 ```zig
 .dependencies = .{
-    .neko = .{ .path = "../neko" },
+    .neko = .{
+        .url = "https://github.com/Renan2010p/neko/archive/<commit>.tar.gz",
+        .hash = "neko-0.1.0-…",
+    },
 },
 ```
 
+Or, during development, point at a local checkout with `.path = "../neko"`.
 Pick a backend and get the module in `build.zig`:
 
 ```zig
 const neko_dep = b.dependency("neko", .{
     .target = target,
     .optimize = optimize,
-    .backend = .sdl2,
+    .backend = .sdl3,
 });
 const neko = neko_dep.module("neko");
 ```
@@ -143,7 +177,8 @@ SDL_VIDEODRIVER=offscreen zig build python-demo
 
 Requirements: the Python development headers (`python3-devel` on Void,
 `python3-dev` on Debian) and, for `font`/`image`, Pillow. If your Python lives
-elsewhere: `zig build python -Dpython-include=/path/to/python/include`.
+elsewhere: `zig build python -Dpython-include=/path/to/python/include` (the
+include directory is otherwise detected from the `python3` on `PATH`).
 
 Because `PYTHONPATH` is searched before `site-packages`, this shadows the real
 pygame, so a game's `import pygame` is all it takes. See
@@ -152,7 +187,7 @@ and roadmap.
 
 ## Backends are plugins
 
-Every backend shares one layout, so SDL2, PS2 and PSX read the same way:
+Every backend shares one layout, so SDL2, SDL3, PS2 and PSX read the same way:
 
 ```
 src/backend/<Name>/
@@ -175,9 +210,10 @@ Adding one is three files — never `build.zig`:
 
 | Name    | Status  | Notes |
 |---------|---------|-------|
-| `sdl2`  | working | SDL2 + SDL2_ttf/image/mixer |
+| `sdl2`  | working | SDL2 + SDL2_ttf/image/mixer (the default) |
 | `sdl2-opengl` | working | SDL2 window + OpenGL presenter |
 | `sdl2-vulkan` | working | SDL2 window + Vulkan presenter |
+| `sdl3`  | working | SDL3 + SDL3_ttf/image/mixer, runtime driver selection |
 | `ps2`   | working | gsKit + pad, freestanding, built with `-ofmt=c` |
 | `psx`   | working | pure-Zig, freestanding |
 | `headless` | working | no OS, no window: the loop only (tests, servers, bare metal) |
@@ -215,9 +251,10 @@ src/core/base/backend.zig  the composed backend contract (folded at comptime)
 src/core/engine.zig        the explicit `neko.Engine` handle (optional)
 src/core/platform.zig      the backend seam (the only core file that names a backend)
 src/core/math/             Vec2/Vec3/Mat4 + scalar helpers
+src/core/graphics/         shaders and cylindrical projection
 src/compat/                compatibility layers (one directory per API)
 src/compat/pygame/         the pygame-shaped layer (Surface/draw/transform/display)
-src/backend/<Name>/        one backend per platform (SDL2, PS2, PSX)
+src/backend/<Name>/        one backend per platform (SDL2, SDL3, PS2, PSX)
   platform.zig platform/   the platform layer + its files
   entry.zig                executable root (freestanding; optional when hosted)
   render/render.zig        common render helpers (or the single renderer)
@@ -227,7 +264,7 @@ src/backend/plugin.zig     the build-plugin contract (build-time only)
 src/backend/registry.zig   the backend registry
 src/backend/<Name>/render/<api>/build.zig  per-backend build plugin
 bindings/python/           the CPython `_neko` extension + the `pygame` package
-docs/                      the guide
+docs/                      the guide and screenshots
 ```
 
 The core depends only on the abstract `neko.Backend` interface; backends
