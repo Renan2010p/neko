@@ -1,7 +1,8 @@
 # Portability
 
 Neko runs the same `src/core/**` on very different targets: hosted Linux/Windows
-with SDL2, and the PlayStation 2 with a freestanding `mips64r5900el` target. This
+with SDL2 or SDL3, and the PlayStation 2 with a freestanding `mips64r5900el`
+target. This
 page explains the rules that keep that possible, and how to add a platform.
 
 ## Portability is the boundary, not the target
@@ -29,7 +30,7 @@ If you add something to `src/core/**` that needs an OS, put it on the
 
 ## Hosted vs freestanding
 
-| Concern | Hosted (SDL2) | Freestanding (PS2) |
+| Concern | Hosted (SDL2 / SDL3) | Freestanding (PS2) |
 |---------|---------------|--------------------|
 | allocator | `std.process.Init.gpa` | a libc `malloc`-backed allocator in the backend |
 | entry | Zig's `start.zig` calls `main` | `entry.zig` exports `main` and builds `std.process.Init` |
@@ -69,6 +70,8 @@ exactly as the PS2 backend does.
   `set_master_volume`, `set_sfx_volume`, `set_music_volume`
 - **`files`**: `read_file`, `write_file`, `delete_file`, `file_exists`
 - **`input`**: `poll_event`, `mouse_pos`
+- **`discord`**: `discord_connect`, `discord_set`, `discord_clear`,
+  `discord_close`, `discord_connected` (no-op unless a backend implements it)
 - **`misc`**: `update_discord`
 
 The `3D` pipeline is optional and separate: a backend that has one sets
@@ -121,10 +124,10 @@ so **nothing in `src/core/**` changes**.
 | `.sdl2` | hosted | libc, `std.Io`, SDL2_ttf/image/mixer |
 | `.sdl2_opengl` | hosted | SDL2 window + OpenGL presenter; the 3D pipeline |
 | `.sdl2_vulkan` | hosted | SDL2 window + Vulkan presenter |
+| `.sdl3` | hosted | SDL3 + SDL3_ttf/image/mixer; driver selected at runtime |
 | `.ps2` | `mips64r5900el-freestanding` | gsKit, pad, audsrv; built with `-ofmt=c` |
 | `.psx` | `mipsel-freestanding` | pure Zig, no SDK |
 | `.headless` | any (including bare metal) | no OS, no window: the loop only |
-| `.sdl3` | planned | not implemented (build panics with a message) |
 
 The `headless` backend is the minimal **bare-metal reference**: it implements
 only the `core` capability (a deterministic clock and a run flag) and needs no

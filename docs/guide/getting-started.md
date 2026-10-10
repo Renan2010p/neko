@@ -3,18 +3,20 @@
 ## Requirements
 
 - **Zig 0.17.0** (the version the engine is written against).
-- For the desktop backend: SDL2 development packages for **SDL2**, **SDL2_ttf**,
-  **SDL2_image** and **SDL2_mixer**.
-
-On a Debian/Ubuntu system:
+- For the desktop backends: **SDL2** or **SDL3**, each with `_ttf` / `_image` /
+  `_mixer` development packages.
 
 ```sh
+# Void Linux — SDL2 (the default backend)
+sudo xbps-install -S SDL2-devel SDL2_ttf-devel SDL2_image-devel SDL2_mixer-devel
+# Void Linux — SDL3
+sudo xbps-install -S SDL3-devel SDL3_ttf-devel SDL3_image-devel SDL3_mixer-devel
+
+# Debian / Ubuntu
 sudo apt install libsdl2-dev libsdl2-ttf-dev libsdl2-image-dev libsdl2-mixer-dev
-```
+# or SDL3: libsdl3-dev libsdl3-ttf-dev libsdl3-image-dev libsdl3-mixer-dev
 
-On Fedora:
-
-```sh
+# Fedora
 sudo dnf install SDL2-devel SDL2_ttf-devel SDL2_image-devel SDL2_mixer-devel
 ```
 
@@ -34,7 +36,7 @@ In your game's `build.zig`, pick a backend and get the module:
 const neko_dep = b.dependency("neko", .{
     .target = target,
     .optimize = optimize,
-    .backend = .sdl2,
+    .backend = .sdl2, // or .sdl3, .ps2, .psx, .headless
 });
 const exe = b.addExecutable(.{
     .name = "my_game",

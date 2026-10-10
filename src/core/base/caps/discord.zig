@@ -5,7 +5,7 @@
 //!
 //! Optional — a backend that does not implement it leaves these at their no-op
 //! defaults, and `neko.net.discord_rich_presence` quietly does nothing. Only
-//! hosted desktop backends (SDL2) implement it.
+//! hosted desktop backends (SDL2, SDL3) implement it.
 
 const types: type = @import("../types.zig");
 

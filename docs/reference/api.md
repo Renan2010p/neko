@@ -274,6 +274,42 @@ Full-screen post effects: `noise`, `scanlines`, `vignette`, `tone`, `vhs`,
 Higher-level presets. `cylinder(tex, .{ .source_width = ... })` wraps a flat
 panorama around the viewer as a GPU mesh.
 
+## `neko.shader`
+
+Runtime shader programs, gated by the `shader` capability. When the active
+backend cannot run shaders, `supported()` is `false` and every load returns
+`null`, so callers can fall back to a CPU path. `neko.Shader` is an alias for
+`neko.shader.Program`.
+
+- `supported() bool`
+- `load(vertex_src, fragment_src) ?Program` — GLSL source
+- `load_files(allocator, dir, vertex_file, fragment_file) ?Program`
+- `load_builtin(name) ?Program` — the engine's built-in `cylinder` shader
+- `Program.draw(tex, params: [4]f32)` — draws over the whole screen, sampling
+  `tex` and passing `params` as `u_params`
+- `Program.deinit()`
+
+```zig
+const prog = neko.shader.load_files(neko.allocator(), "assets/shaders", "post.vert", "post.frag");
+if (prog) |p| {
+    defer p.deinit();
+    p.draw(scene_tex, .{ 0, 0, 0, 0 });
+}
+```
+
+## `neko.projection`
+
+A **cylindrical panorama** projection with inverse mapping, so clicks can hit
+hotspots placed inside the panorama. `neko.Cylinder` is an alias.
+
+- `Cylinder.init(.{ .source_width = ... })` — options: `screen_width`,
+  `screen_height`, `fov_deg`, `pan_max_deg`, `slice_width`, `mesh_step`
+- `source_x(pan, x) f32` / `screen_x(pan, src) f32` — forward / inverse mapping
+- `hit(pan, rect, x, y) bool` — is a screen point inside a source rectangle?
+- `composite(tex, pan)` — per-column CPU composite
+- `composite_mesh(tex, pan)` — GPU mesh (on backends with `geometry`)
+- `composite_shader(tex, pan) bool` — runs the shader path; `false` when unsupported
+
 ## `neko.sound`
 
 - `load(path) ?SoundHandle`

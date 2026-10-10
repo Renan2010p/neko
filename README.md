@@ -279,4 +279,5 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) to get involved and
 [CHANGELOG.md](CHANGELOG.md) for what changed.
 
 Copyright (C) 2026 Renan Lucas Vieira Hilário.
-Created and directed by Renan Lucas Vieira Hilário, implemented with AI assistance.
+Created and directed by Renan Lucas Vieira Hilário, with AI assistance from
+**DeepSeek V4.1 Flash**.

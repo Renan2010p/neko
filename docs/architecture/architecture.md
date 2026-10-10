@@ -23,8 +23,8 @@ interface.
                 │
      ┌──────────┴──────────┐
      ▼                     ▼
-  SDL2 (hosted)        gsKit (PS2, freestanding)
-  libc + std.Io        PS2SDK + own allocator
+  SDL2 / SDL3 (hosted)   gsKit (PS2), PSX (freestanding)
+  libc + std.Io          PS2SDK / pure Zig + own allocator
 ```
 
 ## Layers
@@ -40,8 +40,8 @@ interface.
 
 A platform supplies a **set of capabilities**, not one monolithic vtable. The
 capability modules live in `src/core/base/caps/` — `core`, `window`, `graphics`,
-`text`, `audio`, `files`, `input`, `misc` — and each declares its function
-pointers **with a no-op default**:
+`text`, `audio`, `files`, `input`, `discord`, `misc` — and each declares its
+function pointers **with a no-op default**:
 
 ```zig
 // src/core/base/caps/core.zig
@@ -147,9 +147,10 @@ From the engine repository:
 | `.sdl2` | working | SDL2 + SDL2_ttf/image/mixer (`SDL_Renderer`) |
 | `.sdl2_opengl` | working | SDL2 window + OpenGL presenter (+ 3D) |
 | `.sdl2_vulkan` | working | SDL2 window + Vulkan presenter |
+| `.sdl3` | working | SDL3 + SDL3_ttf/image/mixer, runtime driver selection |
 | `.ps2` | working | gsKit + pad, freestanding, built with `-ofmt=c` |
 | `.psx` | working | pure-Zig, freestanding |
-| `.sdl3` | planned | `zig build` panics with a clear message |
+| `.headless` | working | no OS, no window: the loop only |
 
 ## The standard backend layout
 
