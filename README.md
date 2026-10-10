@@ -113,7 +113,7 @@ Add the dependency to your `build.zig.zon`:
 ```zig
 .dependencies = .{
     .neko = .{
-        .url = "https://github.com/Renan2010p/neko/archive/<commit>.tar.gz",
+        .url = "git+https://github.com/Renan2010p/neko.git#<full-commit-sha>",
         .hash = "neko-0.1.0-…",
     },
 },
