@@ -1,0 +1,12 @@
+[package]
+name = "neko-gamepad-sdl3"
+description = "Gamepad and joystick input through SDL3, modeled on Godot's joypad_sdl driver."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+neko-platform.workspace = true
+neko-sdl3-sys.workspace = true
+dirs.workspace = true
+log.workspace = true

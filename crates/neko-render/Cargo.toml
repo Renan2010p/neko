@@ -1,0 +1,11 @@
+[package]
+name = "neko-render"
+description = "Neko render contracts. Backends (wgpu, software, ...) implement the Renderer trait."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+neko-platform.workspace = true
+epaint.workspace = true
+thiserror = { workspace = true, features = ["std"] }

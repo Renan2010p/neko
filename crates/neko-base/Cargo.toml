@@ -1,0 +1,15 @@
+[package]
+name = "neko-base"
+description = "Freestanding foundation of the Neko engine (no_std + alloc): float math, collections, globals. Runs without an OS, down to the PS1."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["std"]
+# With an OS (std's float math is used instead of libm).
+std = []
+
+[dependencies]
+libm.workspace = true
+hashbrown.workspace = true

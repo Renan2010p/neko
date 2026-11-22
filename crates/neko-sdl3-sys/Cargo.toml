@@ -1,0 +1,9 @@
+[package]
+name = "neko-sdl3-sys"
+description = "Runtime-loaded bindings to the parts of SDL3 Neko uses (windowing, events, gamepads)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+libloading.workspace = true

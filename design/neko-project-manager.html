@@ -1,0 +1,596 @@
+<title>Neko Project Manager</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: gerenciador de projetos dark-first — barra lateral (Projetos/Assets), barra de ferramentas, lista de projetos, coluna de ações; diálogo "Novo projeto" com seleção de backends. */
+:root {
+  --bg: #121318;
+  --panel: #1a1c23;
+  --panel-2: #20232c;
+  --panel-3: #272a35;
+  --line: #2c303b;
+  --fg: #dfe1e8;
+  --muted: #8a8fa0;
+  --accent: #f2b544;
+  --accent-ink: #1a1405;
+  --sel: rgba(242,181,68,.12);
+  --c-2d: #6fa8ff;
+  --c-3d: #ff7f8f;
+  --c-ui: #5fd6a4;
+  --c-audio: #c79bff;
+  --ok: #5fd6a4;
+  --warn: #f2b544;
+  --bad: #ff6b6b;
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--fg); font: 13px/1.45 var(--font-ui); }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.app { display: grid; grid-template-columns: 196px minmax(0,1fr); grid-template-rows: minmax(0,1fr) auto; height: 100%; min-height: 560px; }
+
+/* sidebar */
+.sidebar { grid-row: 1 / 3; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 4px;
+  padding: 14px 10px; padding-left: max(10px, env(safe-area-inset-left, 0px)); }
+.brand { display: flex; align-items: center; gap: 10px; padding: 4px 6px 16px; }
+.brand svg { width: 30px; height: 30px; flex: none; }
+.brand b { display: block; font: 700 18px/1 var(--font-display); letter-spacing: .01em; }
+.brand small { font: 11px var(--font-mono); color: var(--muted); }
+.nav { display: flex; align-items: center; gap: 9px; padding: 7px 10px; border-radius: 5px; border: 0; background: none; cursor: pointer; color: var(--muted); text-align: left; width: 100%; }
+.nav svg { width: 16px; height: 16px; flex: none; }
+.nav:hover { background: var(--panel-2); color: var(--fg); }
+.nav[aria-selected="true"] { background: var(--sel); color: var(--fg); box-shadow: inset 2px 0 0 var(--accent); }
+.sidebar .grow { flex: 1; }
+.sidebar .ver { font: 11px var(--font-mono); color: var(--muted); padding: 0 10px; }
+
+/* content */
+.content { display: grid; grid-template-rows: auto minmax(0,1fr); min-width: 0; min-height: 0; }
+.toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 12px 14px; border-bottom: 1px solid var(--line);
+  padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+.btn { display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px; border-radius: 5px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--panel-2); white-space: nowrap; }
+.btn svg { width: 14px; height: 14px; flex: none; }
+.btn:hover:not(:disabled) { border-color: var(--muted); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.primary:hover:not(:disabled) { border-color: var(--accent); filter: brightness(1.06); }
+.btn.danger:hover:not(:disabled) { border-color: var(--bad); color: var(--bad); }
+.search { flex: 1 1 200px; position: relative; min-width: 0; }
+.search svg { position: absolute; left: 9px; top: 50%; translate: 0 -50%; width: 14px; height: 14px; color: var(--muted); }
+.search input { width: 100%; padding: 6px 10px 6px 30px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel-2); }
+.search input:focus, .field input:focus, select:focus { border-color: var(--accent); outline: none; }
+.sort { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+select { background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 5px 8px; }
+
+.workarea { display: grid; grid-template-columns: minmax(0,1fr) 168px; min-height: 0; }
+.list { overflow: auto; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+.proj { display: grid; grid-template-columns: 22px 44px minmax(0,1fr) auto; gap: 12px; align-items: center; padding: 9px 12px;
+  border-radius: 6px; cursor: pointer; border: 1px solid transparent; }
+.proj:hover { background: var(--panel); }
+.proj.selected { background: var(--sel); border-color: rgba(242,181,68,.35); }
+.proj .fav { background: none; border: 0; cursor: pointer; color: var(--muted); font-size: 15px; padding: 0; }
+.proj .fav.on { color: var(--accent); }
+.thumb { width: 44px; height: 44px; border-radius: 8px; display: grid; place-items: center; font: 700 17px var(--font-display); color: var(--bg); }
+.proj .info { min-width: 0; display: grid; gap: 3px; }
+.proj .name { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 600; font-size: 14px; }
+.proj .path { font: 11.5px var(--font-mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.proj.missing .name, .proj.missing .path { color: var(--muted); }
+.proj.missing .path { text-decoration: line-through; }
+.tag { font: 500 10.5px var(--font-ui); padding: 1px 7px; border-radius: 999px; background: var(--panel-3); color: var(--muted); }
+.tag.t-2d { color: var(--c-2d); } .tag.t-3d { color: var(--c-3d); } .tag.t-ui { color: var(--c-ui); }
+.tag.example { border: 1px dashed var(--line); background: none; }
+.tag.miss { color: var(--bad); }
+.stack { display: flex; gap: 4px; flex-wrap: wrap; }
+.be { font: 10.5px var(--font-mono); padding: 1px 6px; border-radius: 3px; border: 1px solid var(--line); color: var(--muted); }
+.be b { color: var(--fg); font-weight: 500; }
+.proj .when { font: 11px var(--font-mono); color: var(--muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.empty { padding: 40px 20px; text-align: center; color: var(--muted); }
+
+.actions { border-left: 1px solid var(--line); padding: 10px; display: flex; flex-direction: column; gap: 6px; overflow: auto;
+  padding-right: max(10px, env(safe-area-inset-right, 0px)); }
+.actions .btn { justify-content: flex-start; width: 100%; }
+.actions hr { border: 0; border-top: 1px solid var(--line); margin: 4px 0; width: 100%; }
+
+.statusbar { grid-column: 2; display: flex; gap: 16px; flex-wrap: wrap; padding: 5px 14px; border-top: 1px solid var(--line); background: var(--panel);
+  font: 11px var(--font-mono); color: var(--muted); padding-right: max(14px, env(safe-area-inset-right, 0px)); }
+.statusbar b { color: var(--fg); font-weight: 500; }
+
+/* assets view */
+.assets { overflow: auto; padding: 14px; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; align-content: start; }
+.asset { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px; display: grid; gap: 6px; }
+.asset h4 { margin: 0; font: 600 13px var(--font-display); }
+.asset p { margin: 0; color: var(--muted); font-size: 12px; }
+.asset .meta { font: 11px var(--font-mono); color: var(--muted); display: flex; justify-content: space-between; }
+
+/* ---------- dialog ---------- */
+.scrim { position: fixed; inset: 0; background: rgba(6,7,10,.62); display: grid; place-items: center; z-index: 20;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.dialog { width: min(980px, 100%); max-height: 100%; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.5); display: grid; grid-template-rows: auto minmax(0,1fr) auto; overflow: hidden; }
+.dlg-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.dlg-head h2 { margin: 0; font: 700 16px var(--font-display); }
+.dlg-head .x { margin-left: auto; }
+.icon-btn { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 5px; cursor: pointer; background: var(--panel-2); border: 1px solid var(--line); }
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.icon-btn svg { width: 14px; height: 14px; }
+.dlg-body { overflow: auto; display: grid; grid-template-columns: minmax(0,1.25fr) minmax(0,1fr); }
+.col { padding: 16px; display: grid; gap: 16px; align-content: start; min-width: 0; }
+.col + .col { border-left: 1px solid var(--line); background: var(--bg); }
+.field { display: grid; gap: 5px; }
+.field > label, .group-title { font: 600 10.5px var(--font-ui); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.field input[type=text] { width: 100%; padding: 7px 10px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel-2); font-size: 13px; }
+.field .path-row { display: flex; gap: 6px; }
+.field .path-row input { font-family: var(--font-mono); font-size: 12px; }
+.hint { font-size: 12px; color: var(--muted); display: flex; gap: 6px; align-items: center; }
+.hint.ok { color: var(--ok); } .hint.bad { color: var(--bad); }
+.hint::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex: none; }
+
+.seg { display: grid; grid-template-columns: repeat(var(--n, 4), minmax(0,1fr)); gap: 6px; }
+.opt { text-align: left; padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; display: grid; gap: 2px; min-width: 0; }
+.opt b { font-weight: 600; font-size: 12.5px; }
+.opt span { font: 10.5px var(--font-mono); color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.opt:hover:not(:disabled) { border-color: var(--muted); }
+.opt[aria-pressed="true"] { border-color: var(--accent); background: var(--sel); }
+.opt[aria-pressed="true"] b { color: var(--accent); }
+.opt:disabled { opacity: .35; cursor: not-allowed; }
+.explain { font-size: 12px; color: var(--muted); margin: 0; min-height: 3em; max-width: 62ch; }
+
+.platforms { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.plat { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel-2); cursor: pointer; font-size: 12.5px; }
+.plat input { accent-color: var(--accent); margin: 0; }
+.plat .lvl { margin-left: auto; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.plat.no { opacity: .4; cursor: not-allowed; }
+.legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+.legend i { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 5px; }
+
+.code { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow-x: auto; }
+.code-head { display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); font: 11px var(--font-mono); color: var(--muted); }
+.code-head button { background: none; border: 0; color: var(--muted); cursor: pointer; font: 11px var(--font-mono); }
+.code-head button:hover { color: var(--accent); }
+.code pre { margin: 0; padding: 10px 12px; font: 12px/1.6 var(--font-mono); white-space: pre; }
+.k { color: var(--c-2d); } .s { color: var(--c-ui); } .h { color: var(--c-3d); } .c { color: var(--muted); }
+.tree-out { font: 12px/1.65 var(--font-mono); color: var(--muted); margin: 0; white-space: pre; overflow-x: auto; }
+.tree-out b { color: var(--fg); font-weight: 500; }
+
+.dlg-foot { display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 12px 16px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.dlg-foot .sum { margin-right: auto; font: 11px var(--font-mono); color: var(--muted); min-width: 0; }
+.dlg-foot .sum b { color: var(--fg); font-weight: 500; }
+
+.toast { position: fixed; left: 50%; bottom: calc(44px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 30;
+  background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 5px; font-size: 12px; max-width: calc(100% - 32px); }
+
+/* inline confirm */
+.confirm { display: grid; gap: 6px; padding: 8px; border: 1px solid var(--bad); border-radius: 5px; font-size: 12px; }
+.confirm div { display: flex; gap: 6px; }
+.confirm .btn { padding: 4px 8px; flex: 1; justify-content: center; }
+
+@media (max-width: 860px) {
+  .dlg-body { grid-template-columns: minmax(0,1fr); }
+  .col + .col { border-left: 0; border-top: 1px solid var(--line); }
+}
+@media (max-width: 720px) {
+  .app { grid-template-columns: minmax(0,1fr); grid-template-rows: auto minmax(0,1fr) auto; height: auto; min-height: 100%; }
+  .sidebar { grid-row: auto; flex-direction: row; align-items: center; flex-wrap: wrap; border-right: 0; border-bottom: 1px solid var(--line);
+    padding: 8px max(16px, env(safe-area-inset-right, 0px)) 8px max(16px, env(safe-area-inset-left, 0px)); }
+  .brand { padding: 0 8px 0 0; } .brand small, .sidebar .grow, .sidebar .ver { display: none; }
+  .nav { width: auto; }
+  .statusbar { grid-column: 1; }
+  .workarea { grid-template-columns: minmax(0,1fr); }
+  .actions { border-left: 0; border-top: 1px solid var(--line); flex-direction: row; flex-wrap: wrap; }
+  .actions .btn { width: auto; } .actions hr { display: none; }
+  .proj { grid-template-columns: 18px 36px minmax(0,1fr); }
+  .proj .when { grid-column: 3; text-align: left; }
+  .thumb { width: 36px; height: 36px; font-size: 14px; }
+  .seg { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <aside class="sidebar" role="tablist" aria-label="Seções">
+    <div class="brand">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3l4 5h8l4-5v11a8 8 0 0 1-16 0z" fill="var(--accent)"/><circle cx="9" cy="13" r="1.4" fill="var(--accent-ink)"/><circle cx="15" cy="13" r="1.4" fill="var(--accent-ink)"/><path d="M11 16.5h2l-1 1z" fill="var(--accent-ink)"/></svg>
+      <div><b>Neko</b><small>v0.1.0-dev</small></div>
+    </div>
+    <button class="nav" role="tab" aria-selected="true" data-view="projects">
+      <svg viewBox="0 0 16 16"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Projetos</button>
+    <button class="nav" role="tab" aria-selected="false" data-view="assets">
+      <svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="4.5" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="2.5" width="4.5" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="2.5" y="9" width="4.5" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/><rect x="9" y="9" width="4.5" height="4.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Biblioteca de assets</button>
+    <div class="grow"></div>
+    <button class="nav" aria-label="Configurações do gerenciador">
+      <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M8 1.8v2M8 12.2v2M1.8 8h2M12.2 8h2M3.6 3.6l1.4 1.4M11 11l1.4 1.4M3.6 12.4L5 11M11 5l1.4-1.4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>Configurações</button>
+    <div class="ver">rustc 1.91 · wgpu 27 · SDL 3.2</div>
+  </aside>
+
+  <section class="content" id="view-projects">
+    <div class="toolbar">
+      <button class="btn primary" id="btn-new"><svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>Criar</button>
+      <button class="btn" id="btn-import"><svg viewBox="0 0 16 16"><path d="M8 2.5v8M4.5 7L8 10.5 11.5 7M3 13.5h10" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Importar</button>
+      <button class="btn" id="btn-scan"><svg viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Escanear</button>
+      <div class="search">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="Filtrar projetos (nome, caminho, tag ou backend)" aria-label="Filtrar projetos">
+      </div>
+      <label class="sort" for="sort">Ordenar
+        <select id="sort"><option value="edited">Última edição</option><option value="name">Nome</option><option value="path">Caminho</option></select>
+      </label>
+    </div>
+    <div class="workarea">
+      <div class="list" id="list" role="listbox" aria-label="Projetos"></div>
+      <div class="actions" id="actions">
+        <button class="btn primary" data-act="edit"><svg viewBox="0 0 16 16"><path d="M3 13l1-3.5L11 2.5l2.5 2.5L6.5 12z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Editar</button>
+        <button class="btn" data-act="run"><svg viewBox="0 0 16 16"><path d="M5 3l8 5-8 5z" fill="currentColor"/></svg>Executar</button>
+        <hr>
+        <button class="btn" data-act="rename"><svg viewBox="0 0 16 16"><path d="M2.5 12.5h11M4 9.5l5.5-6 2 2-5.5 6H4z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Renomear</button>
+        <button class="btn" data-act="dup"><svg viewBox="0 0 16 16"><rect x="5" y="5" width="8.5" height="8.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.4"/><path d="M3 10.5V3.5a1 1 0 0 1 1-1h6.5" fill="none" stroke="currentColor" stroke-width="1.4"/></svg>Duplicar</button>
+        <button class="btn" data-act="folder"><svg viewBox="0 0 16 16"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Abrir pasta</button>
+        <hr>
+        <button class="btn danger" data-act="remove"><svg viewBox="0 0 16 16"><path d="M3 4.5h10M6 4.5V3h4v1.5M4.5 4.5l.7 9h5.6l.7-9" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>Remover</button>
+        <div id="confirm-slot"></div>
+        <button class="btn danger" data-act="purge">Remover ausentes</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="content" id="view-assets" hidden>
+    <div class="toolbar"><div class="search">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <input id="aq" type="search" placeholder="Buscar na biblioteca (exemplos)" aria-label="Buscar assets"></div>
+      <span class="tag example">conteúdo de exemplo</span></div>
+    <div class="assets" id="assets"></div>
+  </section>
+
+  <footer class="statusbar">
+    <span id="st-count"></span>
+    <span>host <b>linux-x86_64</b></span>
+    <span>backends instalados <b>sdl3 · winit · wgpu · sdl3-gpu · gl · soft · cpal</b></span>
+  </footer>
+</div>
+
+<!-- New project dialog -->
+<div class="scrim" id="scrim" hidden>
+  <form class="dialog" id="newform" role="dialog" aria-modal="true" aria-labelledby="dlg-title" novalidate>
+    <div class="dlg-head">
+      <h2 id="dlg-title">Criar novo projeto</h2>
+      <button type="button" class="icon-btn x" id="dlg-x" aria-label="Fechar"><svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+    </div>
+    <div class="dlg-body">
+      <div class="col">
+        <div class="field">
+          <label for="p-name">Nome do projeto</label>
+          <input type="text" id="p-name" value="Novo Jogo" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="p-path">Caminho</label>
+          <div class="path-row"><input type="text" id="p-path" autocomplete="off"><button type="button" class="btn" id="p-browse">Procurar</button></div>
+          <div class="hint ok" id="p-hint">A pasta será criada.</div>
+        </div>
+        <div class="field">
+          <span class="group-title">Template</span>
+          <div class="seg" id="g-template" style="--n:4"></div>
+        </div>
+        <div class="field">
+          <span class="group-title">Janela e entrada</span>
+          <div class="seg" id="g-window" style="--n:3"></div>
+          <p class="explain" id="x-window"></p>
+        </div>
+        <div class="field">
+          <span class="group-title">Renderizador</span>
+          <div class="seg" id="g-render" style="--n:4"></div>
+          <p class="explain" id="x-render"></p>
+        </div>
+        <div class="field">
+          <span class="group-title">Áudio</span>
+          <div class="seg" id="g-audio" style="--n:3"></div>
+        </div>
+      </div>
+      <div class="col">
+        <div class="field">
+          <span class="group-title">Plataformas alvo</span>
+          <div class="platforms" id="platforms"></div>
+          <div class="legend"><span><i style="background:var(--ok)"></i>suportado</span><span><i style="background:var(--warn)"></i>parcial</span><span><i style="background:var(--bad)"></i>indisponível com esses backends</span></div>
+        </div>
+        <div class="field">
+          <span class="group-title">Controle de versão</span>
+          <div class="seg" id="g-vcs" style="--n:2"></div>
+        </div>
+        <div class="code">
+          <div class="code-head"><span>Cargo.toml</span><button type="button" id="copy">copiar</button></div>
+          <pre id="cargo"></pre>
+        </div>
+        <pre class="tree-out" id="tree-out"></pre>
+      </div>
+    </div>
+    <div class="dlg-foot">
+      <span class="sum" id="sum"></span>
+      <button type="button" class="btn" id="dlg-cancel">Cancelar</button>
+      <button type="submit" class="btn primary" id="dlg-ok">Criar e editar</button>
+    </div>
+  </form>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("neko-pm:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("neko-pm:" + k, JSON.stringify(v)); } catch {} },
+};
+
+/* ---------- backend catalog ---------- */
+const PLATS = [
+  ["windows", "Windows"], ["macos", "macOS"], ["linux", "Linux"], ["freebsd", "FreeBSD"], ["openbsd", "OpenBSD"],
+  ["netbsd", "NetBSD"], ["android", "Android"], ["ios", "iOS"], ["web", "Web"], ["haiku", "Haiku"],
+];
+const ALL = Object.fromEntries(PLATS.map(([k]) => [k, 2]));
+// 2 = suportado, 1 = parcial, 0 = indisponível (estimativa por backend)
+const sup = (o, base = 0) => Object.fromEntries(PLATS.map(([k]) => [k, o[k] ?? base]));
+const WINDOW = {
+  sdl3:  { label: "SDL3", sub: "sdl3-sys", feat: "window-sdl3", support: ALL,
+           text: "SDL3 cuida de janela, entrada, gamepads, IME e áudio. Cobre o maior número de sistemas, incluindo BSDs e Haiku." },
+  winit: { label: "winit", sub: "winit 0.30", feat: "window-winit", support: sup({ haiku: 0, openbsd: 1, netbsd: 1 }, 2),
+           text: "100% Rust. Janela e entrada nativas sem dependência C. Gamepads via gilrs." },
+  headless: { label: "Headless", sub: "sem janela", feat: "window-headless", support: ALL,
+           text: "Sem janela: servidores dedicados, testes e renderização offline." },
+};
+const RENDER = {
+  wgpu:    { label: "wgpu", sub: "Vulkan·Metal·DX12·GL", feat: "render-wgpu", support: sup({ openbsd: 1, netbsd: 1, haiku: 0 }, 2),
+             text: "Renderizador principal. Escolhe a API nativa em tempo de execução: Vulkan, Metal, DX12, GLES ou WebGPU/WebGL2 no navegador." },
+  sdl3gpu: { label: "SDL3 GPU", sub: "SDL_GPU", feat: "render-sdl3-gpu", needs: "sdl3", support: sup({ windows: 2, macos: 2, linux: 2, freebsd: 2, android: 2, ios: 2, openbsd: 1, netbsd: 1 }),
+             text: "API de GPU do SDL3 (Vulkan, Metal, D3D12). Exige a janela SDL3. Shaders WGSL são traduzidos para SPIR-V/MSL/DXIL na exportação." },
+  gl:      { label: "OpenGL", sub: "glow · GL 3.3/ES 3", feat: "render-gl", support: sup({ ios: 1 }, 2),
+             text: "Modo compatibilidade para hardware antigo, BSDs e Haiku via Mesa, e WebGL2 no navegador." },
+  soft:    { label: "Software", sub: "CPU rasterizer", feat: "render-soft", support: ALL,
+             text: "Rasterizador em CPU. Roda em qualquer lugar, útil para testes de CI e jogos 2D de baixa resolução." },
+};
+const AUDIO = {
+  sdl3: { label: "SDL3", sub: "SDL_audio", feat: "audio-sdl3", needs: "sdl3", support: ALL },
+  cpal: { label: "cpal", sub: "Rust puro", feat: "audio-cpal", support: sup({ openbsd: 1, netbsd: 1, haiku: 0 }, 2) },
+  none: { label: "Nenhum", sub: "sem áudio", feat: null, support: ALL },
+};
+const TEMPLATES = {
+  empty: { label: "Vazio", sub: "Node", feat: [] },
+  "2d":  { label: "2D", sub: "Node2D", feat: ["2d", "physics2d"] },
+  "3d":  { label: "3D", sub: "Node3D", feat: ["3d", "physics3d"] },
+  ui:    { label: "App / UI", sub: "Control", feat: ["ui"] },
+};
+const VCS = { git: { label: "Git", sub: ".gitignore + init" }, none: { label: "Nenhum", sub: "sem metadados" } };
+
+/* ---------- projects (exemplos na primeira abertura) ---------- */
+const DAY = 864e5, now = Date.now();
+const SEED = [
+  { id: 1, name: "Gato Plataforma", path: "~/Projetos/jogos/gato-plataforma", edited: now - 2 * 36e5, fav: true, tags: ["2d"], win: "sdl3", ren: "wgpu", aud: "sdl3", example: true },
+  { id: 2, name: "Neko Kart", path: "~/Projetos/jogos/neko-kart", edited: now - 1 * DAY, fav: false, tags: ["3d"], win: "sdl3", ren: "sdl3gpu", aud: "sdl3", example: true },
+  { id: 3, name: "Dungeon Voxel", path: "~/Projetos/jogos/dungeon-voxel", edited: now - 4 * DAY, fav: true, tags: ["3d"], win: "winit", ren: "wgpu", aud: "cpal", example: true },
+  { id: 4, name: "Launcher UI", path: "~/Projetos/ferramentas/launcher-ui", edited: now - 9 * DAY, fav: false, tags: ["ui"], win: "winit", ren: "gl", aud: "none", example: true },
+  { id: 5, name: "Raycaster Retrô", path: "~/Projetos/jogos/raycaster", edited: now - 23 * DAY, fav: false, tags: ["2d"], win: "sdl3", ren: "soft", aud: "sdl3", example: true },
+  { id: 6, name: "Protótipo Antigo", path: "~/Downloads/prototipo-antigo", edited: now - 70 * DAY, fav: false, tags: ["2d"], win: "sdl3", ren: "gl", aud: "sdl3", example: true, missing: true },
+];
+let projects = store.get("projects", SEED);
+let selected = projects[0]?.id ?? null;
+let q = "", sortBy = "edited";
+let nextId = Math.max(0, ...projects.map(p => p.id)) + 1;
+const save = () => store.set("projects", projects);
+
+const HUES = ["#f2b544", "#6fa8ff", "#ff7f8f", "#5fd6a4", "#c79bff", "#7fd3e0"];
+const hue = s => HUES[[...s].reduce((a, c) => a + c.charCodeAt(0), 0) % HUES.length];
+const initials = s => s.split(/\s+/).filter(Boolean).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+function ago(t) {
+  const m = Math.round((Date.now() - t) / 6e4);
+  if (m < 1) return "agora"; if (m < 60) return `há ${m} min`;
+  const h = Math.round(m / 60); if (h < 24) return `há ${h} h`;
+  const d = Math.round(h / 24); return d < 30 ? `há ${d} d` : `há ${Math.round(d / 30)} mês(es)`;
+}
+
+function renderList() {
+  const term = q.toLowerCase();
+  let rows = projects.filter(p => !term || [p.name, p.path, ...p.tags, WINDOW[p.win].label, RENDER[p.ren].label, AUDIO[p.aud].label].join(" ").toLowerCase().includes(term));
+  rows.sort((a, b) => (b.fav - a.fav) || (sortBy === "name" ? a.name.localeCompare(b.name) : sortBy === "path" ? a.path.localeCompare(b.path) : b.edited - a.edited));
+  const list = $("#list");
+  list.innerHTML = rows.length ? rows.map(p => `
+    <div class="proj${p.id === selected ? " selected" : ""}${p.missing ? " missing" : ""}" role="option" aria-selected="${p.id === selected}" data-id="${p.id}" tabindex="${p.id === selected ? 0 : -1}">
+      <button class="fav${p.fav ? " on" : ""}" data-fav aria-label="${p.fav ? "Desfavoritar" : "Favoritar"} ${esc(p.name)}">★</button>
+      <div class="thumb" style="background:${p.missing ? "var(--panel-3)" : hue(p.name)}">${esc(initials(p.name))}</div>
+      <div class="info">
+        <div class="name">${esc(p.name)} ${p.tags.map(t => `<span class="tag t-${t}">${t.toUpperCase()}</span>`).join("")}
+          ${p.missing ? `<span class="tag miss">pasta não encontrada</span>` : ""}${p.example ? `<span class="tag example">exemplo</span>` : ""}</div>
+        <div class="path">${esc(p.path)}</div>
+        <div class="stack"><span class="be">janela <b>${WINDOW[p.win].label}</b></span><span class="be">render <b>${RENDER[p.ren].label}</b></span><span class="be">áudio <b>${AUDIO[p.aud].label}</b></span></div>
+      </div>
+      <div class="when">${ago(p.edited)}</div>
+    </div>`).join("")
+    : `<div class="empty">${projects.length ? `Nenhum projeto corresponde a “${esc(q)}”.` : "Nenhum projeto ainda. Clique em <b>Criar</b> ou <b>Importar</b>."}</div>`;
+  const cur = projects.find(p => p.id === selected);
+  document.querySelectorAll("#actions [data-act]").forEach(b => {
+    const a = b.dataset.act;
+    b.disabled = a === "purge" ? !projects.some(p => p.missing) : !cur || (cur.missing && ["edit", "run", "folder", "dup"].includes(a));
+  });
+  $("#confirm-slot").innerHTML = "";
+  $("#st-count").innerHTML = `<b>${projects.length}</b> projetos · <b>${projects.filter(p => p.fav).length}</b> favoritos`;
+}
+
+$("#list").addEventListener("click", e => {
+  const row = e.target.closest(".proj"); if (!row) return;
+  const p = projects.find(x => x.id === +row.dataset.id);
+  if (e.target.closest("[data-fav]")) { p.fav = !p.fav; save(); }
+  selected = p.id; renderList();
+  $(`.proj[data-id="${p.id}"]`)?.focus({ preventScroll: true });
+});
+$("#list").addEventListener("dblclick", e => { const row = e.target.closest(".proj"); if (row && !e.target.closest("[data-fav]")) act("edit"); });
+$("#list").addEventListener("keydown", e => {
+  const rows = [...document.querySelectorAll(".proj")]; const i = rows.findIndex(r => +r.dataset.id === selected);
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault(); const n = rows[Math.max(0, Math.min(rows.length - 1, i + (e.key === "ArrowDown" ? 1 : -1)))];
+    if (n) { selected = +n.dataset.id; renderList(); $(`.proj[data-id="${selected}"]`).focus(); }
+  } else if (e.key === "Enter") act("edit");
+  else if (e.key === "Delete") act("remove");
+});
+$("#q").addEventListener("input", e => { q = e.target.value.trim(); renderList(); });
+$("#sort").addEventListener("change", e => { sortBy = e.target.value; renderList(); });
+
+function act(a) {
+  const p = projects.find(x => x.id === selected);
+  if (a === "purge") {
+    const n = projects.filter(x => x.missing).length; projects = projects.filter(x => !x.missing);
+    if (!projects.some(x => x.id === selected)) selected = projects[0]?.id ?? null;
+    save(); renderList(); toast(`${n} projeto(s) ausente(s) removido(s) da lista.`); return;
+  }
+  if (!p) return;
+  if (a === "edit") { p.edited = Date.now(); save(); renderList(); toast(`Abrindo ${p.name} no editor (${WINDOW[p.win].label} + ${RENDER[p.ren].label})…`); }
+  else if (a === "run") toast(`cargo run --release em ${p.path}`);
+  else if (a === "folder") toast(`Abrindo ${p.path} no gerenciador de arquivos.`);
+  else if (a === "dup") {
+    const c = { ...p, id: nextId++, name: p.name + " (cópia)", path: p.path + "-copia", edited: Date.now(), fav: false, tags: [...p.tags] };
+    projects.push(c); selected = c.id; save(); renderList(); toast(`${c.name} criado.`);
+  } else if (a === "rename") {
+    const row = $(`.proj[data-id="${p.id}"] .name`); if (!row) return;
+    row.innerHTML = `<input type="text" id="rename-input" value="${esc(p.name)}" aria-label="Novo nome" style="background:var(--panel-2);border:1px solid var(--accent);border-radius:4px;padding:2px 6px;min-width:0;width:100%">`;
+    const inp = $("#rename-input"); inp.focus(); inp.select();
+    const done = ok => { if (ok && inp.value.trim()) { p.name = inp.value.trim(); save(); } renderList(); };
+    inp.addEventListener("keydown", ev => { ev.stopPropagation(); if (ev.key === "Enter") done(true); if (ev.key === "Escape") done(false); });
+    inp.addEventListener("blur", () => done(true), { once: true });
+  } else if (a === "remove") {
+    $("#confirm-slot").innerHTML = `<div class="confirm"><span>Remover <b>${esc(p.name)}</b> da lista? Os arquivos no disco não são apagados.</span>
+      <div><button class="btn" id="c-no">Cancelar</button><button class="btn danger" id="c-yes">Remover</button></div></div>`;
+    $("#c-no").onclick = () => ($("#confirm-slot").innerHTML = "");
+    $("#c-yes").onclick = () => { projects = projects.filter(x => x !== p); selected = projects[0]?.id ?? null; save(); renderList(); toast(`${p.name} removido da lista.`); };
+    $("#c-yes").focus();
+  }
+}
+document.querySelectorAll("#actions [data-act]").forEach(b => b.addEventListener("click", () => act(b.dataset.act)));
+$("#btn-import").addEventListener("click", () => toast("Selecione um neko.toml ou Cargo.toml de um projeto Neko."));
+$("#btn-scan").addEventListener("click", () => toast("Escaneando ~/Projetos por arquivos neko.toml…"));
+
+/* ---------- new project dialog ---------- */
+const st = { template: "2d", win: "sdl3", ren: "wgpu", aud: "sdl3", vcs: "git", plats: new Set(["windows", "macos", "linux", "freebsd", "android"]) };
+let pathEdited = false;
+const slug = s => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "projeto";
+
+function seg(el, catalog, key, isDisabled = () => false) {
+  el.innerHTML = Object.entries(catalog).map(([k, o]) =>
+    `<button type="button" class="opt" data-k="${k}" aria-pressed="${st[key] === k}" ${isDisabled(k, o) ? "disabled" : ""}><b>${o.label}</b><span>${o.sub}</span></button>`).join("");
+  el.onclick = e => { const b = e.target.closest(".opt"); if (!b || b.disabled) return; st[key] = b.dataset.k; renderDialog(); };
+}
+function support(k) {
+  return Math.min(WINDOW[st.win].support[k], RENDER[st.ren].support[k], AUDIO[st.aud].support[k], st.win === "headless" && ["android", "ios", "web"].includes(k) ? 0 : 2);
+}
+function renderDialog() {
+  // dependências entre backends
+  if (RENDER[st.ren].needs && st.win !== RENDER[st.ren].needs) st.ren = "wgpu";
+  if (AUDIO[st.aud].needs && st.win !== AUDIO[st.aud].needs) st.aud = "cpal";
+  seg($("#g-template"), TEMPLATES, "template");
+  seg($("#g-window"), WINDOW, "win");
+  seg($("#g-render"), RENDER, "ren", (k, o) => o.needs && o.needs !== st.win);
+  seg($("#g-audio"), AUDIO, "aud", (k, o) => o.needs && o.needs !== st.win);
+  seg($("#g-vcs"), VCS, "vcs");
+  $("#x-window").textContent = WINDOW[st.win].text;
+  $("#x-render").textContent = RENDER[st.ren].text;
+
+  const LVL = ["var(--bad)", "var(--warn)", "var(--ok)"];
+  $("#platforms").innerHTML = PLATS.map(([k, label]) => {
+    const s = support(k); if (!s) st.plats.delete(k);
+    return `<label class="plat${s ? "" : " no"}" title="${["indisponível", "suporte parcial", "suportado"][s]}">
+      <input type="checkbox" id="pl-${k}" data-p="${k}" ${st.plats.has(k) ? "checked" : ""} ${s ? "" : "disabled"}>${label}<span class="lvl" style="background:${LVL[s]}"></span></label>`;
+  }).join("");
+
+  const name = $("#p-name").value.trim();
+  const crate = slug(name).replace(/-/g, "_");
+  if (!pathEdited) $("#p-path").value = `~/Projetos/${slug(name)}`;
+  const path = $("#p-path").value.trim();
+  const clash = projects.some(p => p.path === path);
+  const hint = $("#p-hint");
+  if (!name) { hint.className = "hint bad"; hint.textContent = "Dê um nome ao projeto."; }
+  else if (!path) { hint.className = "hint bad"; hint.textContent = "Escolha uma pasta para o projeto."; }
+  else if (clash) { hint.className = "hint bad"; hint.textContent = "Já existe um projeto nesse caminho. Escolha outra pasta."; }
+  else { hint.className = "hint ok"; hint.textContent = "A pasta será criada."; }
+  $("#dlg-ok").disabled = !name || !path || clash || !st.plats.size;
+
+  const feats = [...TEMPLATES[st.template].feat, WINDOW[st.win].feat, RENDER[st.ren].feat, AUDIO[st.aud].feat].filter(Boolean);
+  const plats = PLATS.filter(([k]) => st.plats.has(k)).map(([k]) => k);
+  $("#cargo").innerHTML =
+`<span class="h">[package]</span>
+<span class="k">name</span> = <span class="s">"${crate}"</span>
+<span class="k">version</span> = <span class="s">"0.1.0"</span>
+<span class="k">edition</span> = <span class="s">"2024"</span>
+
+<span class="h">[dependencies]</span>
+<span class="k">neko</span> = { <span class="k">version</span> = <span class="s">"0.1"</span>, <span class="k">default-features</span> = false, <span class="k">features</span> = [
+${feats.map(f => `    <span class="s">"${f}"</span>,`).join("\n")}
+] }
+
+<span class="h">[package.metadata.neko]</span>
+<span class="k">targets</span> = [${plats.map(p => `<span class="s">"${p}"</span>`).join(", ")}]
+<span class="c"># troque de backend editando as features acima</span>`;
+  const root = { empty: "Main.scn  (Node)", "2d": "Main.scn  (Node2D)", "3d": "Main.scn  (Node3D)", ui: "Main.scn  (Control)" }[st.template];
+  $("#tree-out").innerHTML = `<b>${esc(slug(name))}/</b>
+├── Cargo.toml
+├── neko.toml
+├── src/
+│   └── main.rs
+├── scenes/
+│   └── ${root}
+├── assets/${st.vcs === "git" ? "\n├── .gitignore\n└── .git/" : ""}`;
+  $("#sum").innerHTML = `<b>${feats.length}</b> features · <b>${st.plats.size}</b> plataformas`;
+}
+$("#platforms").addEventListener("change", e => { const k = e.target.dataset.p; if (!k) return; e.target.checked ? st.plats.add(k) : st.plats.delete(k); renderDialog(); });
+$("#p-name").addEventListener("input", renderDialog);
+$("#p-path").addEventListener("input", () => { pathEdited = true; renderDialog(); });
+$("#p-browse").addEventListener("click", () => toast("O seletor de pasta nativo abre aqui (rfd / SDL_ShowOpenFolderDialog)."));
+$("#copy").addEventListener("click", () => {
+  const txt = $("#cargo").textContent;
+  navigator.clipboard?.writeText(txt).then(() => toast("Cargo.toml copiado."), () => {
+    const r = document.createRange(); r.selectNodeContents($("#cargo")); getSelection().removeAllRanges(); getSelection().addRange(r); toast("Texto selecionado. Use Ctrl+C.");
+  }) ?? toast("Selecione o texto e use Ctrl+C.");
+});
+
+function openDialog() { $("#scrim").hidden = false; pathEdited = false; $("#p-name").value = "Novo Jogo"; renderDialog(); $("#p-name").focus(); $("#p-name").select(); }
+function closeDialog() { $("#scrim").hidden = true; $("#btn-new").focus(); }
+$("#btn-new").addEventListener("click", openDialog);
+$("#dlg-x").addEventListener("click", closeDialog);
+$("#dlg-cancel").addEventListener("click", closeDialog);
+$("#scrim").addEventListener("click", e => { if (e.target === $("#scrim")) closeDialog(); });
+$("#scrim").addEventListener("keydown", e => { if (e.key === "Escape") closeDialog(); });
+$("#newform").addEventListener("submit", e => {
+  e.preventDefault(); if ($("#dlg-ok").disabled) return;
+  const name = $("#p-name").value.trim();
+  const p = { id: nextId++, name, path: $("#p-path").value.trim(), edited: Date.now(), fav: false,
+    tags: st.template === "empty" ? [] : [st.template], win: st.win, ren: st.ren, aud: st.aud };
+  projects.push(p); selected = p.id; save(); closeDialog(); renderList();
+  toast(`${name} criado. Abrindo no editor…`);
+});
+
+/* ---------- assets view ---------- */
+const ASSETS = [
+  ["Kit de Plataforma 2D", "Tiles 16×16, personagem e inimigos com animações.", "2D · CC0", "1,2 MB"],
+  ["Controlador em 1ª pessoa", "CharacterBody3D com pulo, agachar e head bob.", "3D · MIT", "48 KB"],
+  ["Shaders WGSL Toon", "Cel shading, contorno e rim light para wgpu.", "Shader · MIT", "22 KB"],
+  ["Tema Neko Dark", "Tema de UI com fontes e ícones.", "UI · MIT", "310 KB"],
+  ["Efeitos 8-bit", "60 efeitos sonoros em OGG para áudio SDL3/cpal.", "Áudio · CC-BY", "3,4 MB"],
+  ["Diálogos em árvore", "Sistema de diálogos com editor visual.", "Plugin · Apache-2.0", "96 KB"],
+];
+function renderAssets() {
+  const t = ($("#aq").value || "").toLowerCase();
+  $("#assets").innerHTML = ASSETS.filter(a => a.join(" ").toLowerCase().includes(t)).map(([n, d, c, s]) =>
+    `<article class="asset"><h4>${n}</h4><p>${d}</p><div class="meta"><span>${c}</span><span>${s}</span></div></article>`).join("") || `<div class="empty">Nada encontrado.</div>`;
+}
+$("#aq").addEventListener("input", renderAssets);
+document.querySelectorAll(".nav[data-view]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".nav[data-view]").forEach(x => x.setAttribute("aria-selected", x === b));
+  $("#view-projects").hidden = b.dataset.view !== "projects"; $("#view-assets").hidden = b.dataset.view !== "assets";
+}));
+
+let tt; function toast(m) { const t = $("#toast"); t.textContent = m; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => (t.hidden = true), 2600); }
+addEventListener("keydown", e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "n" && $("#scrim").hidden) { e.preventDefault(); openDialog(); } });
+
+renderList(); renderAssets();
+})();
+</script>

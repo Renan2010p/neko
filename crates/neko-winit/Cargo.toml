@@ -1,0 +1,17 @@
+[package]
+name = "neko-winit"
+description = "Neko platform backend built on winit (pure Rust)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["gamepad-sdl3"]
+## Gamepads through SDL3 (loaded at runtime), like Godot.
+gamepad-sdl3 = ["dep:neko-gamepad-sdl3"]
+
+[dependencies]
+neko-platform.workspace = true
+winit.workspace = true
+log.workspace = true
+neko-gamepad-sdl3 = { workspace = true, optional = true }

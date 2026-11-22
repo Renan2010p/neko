@@ -1,0 +1,16 @@
+[package]
+name = "neko-soft"
+description = "Neko CPU renderer backend. Runs anywhere, also used for headless screenshots and CI."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["window"]
+## Present to a native window through softbuffer.
+window = ["dep:softbuffer"]
+
+[dependencies]
+neko-platform.workspace = true
+neko-render.workspace = true
+softbuffer = { workspace = true, optional = true }

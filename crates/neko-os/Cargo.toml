@@ -1,0 +1,16 @@
+[package]
+name = "neko-os"
+description = "Neko OS contracts: time, threads, entropy, logging and files. A port implements these traits; `StdOs` covers every target with Rust's std."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["std-backend"]
+# The `StdOs` backend (Linux, BSDs, Windows, macOS, Android, iOS, Haiku...).
+std-backend = ["dep:getrandom", "dep:dirs"]
+
+[dependencies]
+thiserror = { workspace = true, features = ["std"] }
+getrandom = { workspace = true, optional = true }
+dirs = { workspace = true, optional = true }

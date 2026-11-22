@@ -1,0 +1,640 @@
+<title>Neko Editor</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: editor de jogo dark-first — menubar, docks (Cena | Viewport | Inspetor), barra de status; diálogo "Criar Nó" aberto por cima. */
+:root {
+  --bg: #121318;          /* fundo da janela */
+  --panel: #1a1c23;       /* docks */
+  --panel-2: #20232c;     /* cabeçalhos / inputs */
+  --line: #2c303b;
+  --fg: #dfe1e8;
+  --muted: #8a8fa0;
+  --accent: #f2b544;      /* olho de gato — âmbar */
+  --accent-ink: #1a1405;
+  --sel: rgba(242,181,68,.14);
+  --c-node: #b9bdc9;      /* Node genérico */
+  --c-2d: #6fa8ff;        /* 2D */
+  --c-3d: #ff7f8f;        /* 3D */
+  --c-ui: #5fd6a4;        /* Control / UI */
+  --c-audio: #c79bff;     /* Áudio */
+  --viewport: #0e0f13;
+  --grid: rgba(255,255,255,.045);
+  --font-ui: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--bg); color: var(--fg);
+  font: 13px/1.45 var(--font-ui);
+  padding-left: max(0px, env(safe-area-inset-left, 0px));
+  padding-right: max(0px, env(safe-area-inset-right, 0px));
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.app { display: grid; grid-template-rows: auto auto 1fr auto; height: 100%; min-height: 560px; }
+
+/* menubar */
+.menubar {
+  display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding-block: 6px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--panel); border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 8px; margin-right: 10px; font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: .01em; }
+.brand svg { width: 22px; height: 22px; }
+.menubar .m { background: none; border: 0; padding: 4px 8px; border-radius: 4px; cursor: pointer; color: var(--muted); }
+.menubar .m:hover { background: var(--panel-2); color: var(--fg); }
+.spacer { flex: 1; }
+.backend { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+.backend label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-right: 4px; }
+.chip {
+  font: 500 11px var(--font-mono); padding: 3px 8px; border-radius: 999px; cursor: pointer;
+  border: 1px solid var(--line); background: transparent; color: var(--muted);
+}
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+/* workspace tabs */
+.workspaces {
+  display: flex; justify-content: center; gap: 2px; padding: 4px 16px; background: var(--bg); border-bottom: 1px solid var(--line); flex-wrap: wrap;
+}
+.ws { background: none; border: 0; padding: 4px 14px; border-radius: 4px; cursor: pointer; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.ws[aria-selected="true"] { color: var(--fg); background: var(--panel-2); }
+.ws .dot { width: 8px; height: 8px; border-radius: 2px; }
+
+/* main */
+.main { display: grid; grid-template-columns: 260px minmax(0,1fr) 290px; min-height: 0; }
+.dock { background: var(--panel); display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.dock + .viewport, .viewport + .dock { border-left: 1px solid var(--line); }
+.dock-head {
+  display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-bottom: 1px solid var(--line);
+  font: 600 11px var(--font-ui); text-transform: uppercase; letter-spacing: .08em; color: var(--muted);
+}
+.dock-head .title { flex: 1; }
+.icon-btn {
+  display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 4px; cursor: pointer;
+  background: var(--panel-2); border: 1px solid var(--line); color: var(--fg);
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.icon-btn svg { width: 14px; height: 14px; }
+.dock-body { overflow: auto; flex: 1; padding: 4px 0; }
+
+/* trees (shared by scene tree and node menu) */
+.tree, .tree ul { list-style: none; margin: 0; padding: 0; }
+.tree ul { padding-left: 14px; }
+.row {
+  display: flex; align-items: center; gap: 6px; padding: 3px 8px; cursor: pointer; border-radius: 3px; margin: 0 4px;
+  white-space: nowrap; user-select: none;
+}
+.row:hover { background: var(--panel-2); }
+.row.selected { background: var(--sel); box-shadow: inset 2px 0 0 var(--accent); }
+.row .tw { width: 12px; height: 12px; display: inline-grid; place-items: center; color: var(--muted); flex: none; }
+.row .tw svg { width: 9px; height: 9px; transition: transform .12s; }
+.row.collapsed .tw svg { transform: rotate(-90deg); }
+.row .ico { width: 16px; height: 16px; flex: none; }
+.row .nm { overflow: hidden; text-overflow: ellipsis; }
+.row .cls { color: var(--muted); font: 11px var(--font-mono); margin-left: auto; }
+.row mark { background: none; color: var(--accent); font-weight: 600; }
+.row.dim .nm { color: var(--muted); }
+
+/* viewport */
+.viewport { position: relative; background: var(--viewport); min-width: 0; overflow: hidden; }
+.viewport canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.vp-tools { position: absolute; top: 8px; left: 8px; display: flex; gap: 4px; z-index: 2; flex-wrap: wrap; }
+.vp-tools .chip { background: var(--panel); }
+.vp-info { position: absolute; bottom: 8px; right: 10px; font: 11px var(--font-mono); color: var(--muted); z-index: 2; }
+
+/* inspector */
+.insp { padding: 10px 12px; display: grid; gap: 10px; }
+.insp-title { display: flex; align-items: center; gap: 8px; }
+.insp-title .ico { width: 20px; height: 20px; }
+.insp-title h3 { margin: 0; font: 600 14px var(--font-display); }
+.insp-title .crate { margin-left: auto; font: 11px var(--font-mono); color: var(--muted); }
+.section { border-top: 1px solid var(--line); padding-top: 8px; display: grid; gap: 6px; }
+.section h4 { margin: 0; font: 600 10px var(--font-ui); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.prop { display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 8px; align-items: center; }
+.prop span { color: var(--muted); font-size: 12px; }
+.prop input, .prop select {
+  width: 100%; min-width: 0; background: var(--panel-2); border: 1px solid var(--line); color: var(--fg);
+  border-radius: 4px; padding: 3px 6px; font: 12px var(--font-mono); font-variant-numeric: tabular-nums;
+}
+.vec { display: grid; grid-template-columns: repeat(var(--n,2), minmax(0,1fr)); gap: 4px; }
+
+/* status bar */
+.status {
+  display: flex; gap: 16px; flex-wrap: wrap; align-items: center; padding-block: 4px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  background: var(--panel); border-top: 1px solid var(--line); font: 11px var(--font-mono); color: var(--muted);
+}
+.status b { color: var(--fg); font-weight: 500; }
+.status .ok::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--c-ui); margin-right: 6px; }
+
+/* ---------- Create Node dialog ---------- */
+.scrim { position: fixed; inset: 0; background: rgba(6,7,10,.6); display: grid; place-items: center; z-index: 20;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.dialog {
+  width: min(880px, 100%); height: min(620px, 100%); background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 24px 60px rgba(0,0,0,.5); display: grid; grid-template-rows: auto auto 1fr auto auto; overflow: hidden;
+}
+.dlg-head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+.dlg-head h2 { margin: 0; font: 700 16px var(--font-display); }
+.dlg-head .parent { font-size: 12px; color: var(--muted); }
+.dlg-head .parent code { font-family: var(--font-mono); color: var(--fg); }
+.dlg-head .close { margin-left: auto; }
+.search-row { display: flex; gap: 8px; padding: 10px 14px; align-items: center; flex-wrap: wrap; }
+.search { flex: 1 1 220px; position: relative; min-width: 0; }
+.search svg { position: absolute; left: 9px; top: 50%; translate: 0 -50%; width: 14px; height: 14px; color: var(--muted); }
+.search input {
+  width: 100%; padding: 7px 10px 7px 30px; border-radius: 5px; border: 1px solid var(--line); background: var(--panel-2);
+  color: var(--fg); font: 13px var(--font-ui);
+}
+.search input:focus { border-color: var(--accent); outline: none; }
+.filters { display: flex; gap: 4px; flex-wrap: wrap; }
+.filters .chip { display: inline-flex; align-items: center; gap: 5px; }
+.filters .chip i { width: 7px; height: 7px; border-radius: 2px; display: inline-block; }
+
+.dlg-body { display: grid; grid-template-columns: 200px minmax(0,1fr); min-height: 0; border-top: 1px solid var(--line); }
+.side { border-right: 1px solid var(--line); display: grid; grid-template-rows: auto 1fr auto 1fr; min-height: 0; }
+.side h5 { margin: 0; padding: 7px 10px; font: 600 10px var(--font-ui); text-transform: uppercase; letter-spacing: .09em; color: var(--muted); border-bottom: 1px solid var(--line); background: var(--panel-2); }
+.side ul { list-style: none; margin: 0; padding: 4px 0; overflow: auto; }
+.side .empty { padding: 6px 12px; color: var(--muted); font-size: 12px; }
+.class-tree { overflow: auto; padding: 4px 0; min-height: 0; }
+.star { margin-left: 6px; background: none; border: 0; padding: 0 2px; cursor: pointer; color: var(--muted); opacity: 0; }
+.row:hover .star, .star.on { opacity: 1; }
+.star.on { color: var(--accent); }
+.no-results { padding: 24px; color: var(--muted); text-align: center; }
+
+.desc { border-top: 1px solid var(--line); padding: 10px 14px; display: grid; gap: 4px; background: var(--panel-2); min-height: 92px; }
+.desc .path { font: 11px var(--font-mono); color: var(--muted); overflow-x: auto; white-space: nowrap; }
+.desc .path b { color: var(--fg); font-weight: 500; }
+.desc p { margin: 0; max-width: 72ch; }
+.desc .meta { display: flex; gap: 12px; flex-wrap: wrap; font: 11px var(--font-mono); color: var(--muted); }
+.desc .meta span b { color: var(--accent); font-weight: 500; }
+
+.dlg-foot { display: flex; justify-content: flex-end; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--line); }
+.btn { padding: 6px 16px; border-radius: 5px; cursor: pointer; border: 1px solid var(--line); background: var(--panel-2); }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.primary:disabled { opacity: .45; cursor: not-allowed; }
+.kbd { font: 10px var(--font-mono); color: var(--muted); margin-right: auto; align-self: center; }
+
+.toast { position: fixed; left: 50%; bottom: calc(40px + env(safe-area-inset-bottom, 0px)); translate: -50% 0; z-index: 30;
+  background: var(--panel-2); border: 1px solid var(--line); border-left: 3px solid var(--accent); padding: 8px 14px; border-radius: 5px; font-size: 12px; }
+
+@media (max-width: 900px) {
+  .main { grid-template-columns: minmax(0,1fr); grid-template-rows: 220px 260px auto; overflow: auto; }
+  .dock + .viewport, .viewport + .dock { border-left: 0; border-top: 1px solid var(--line); }
+  .app { height: auto; }
+}
+@media (max-width: 640px) {
+  .dlg-body { grid-template-columns: minmax(0,1fr); }
+  .side { display: none; }
+  .dialog { height: 100%; }
+  .backend label { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="app">
+  <header class="menubar">
+    <div class="brand" aria-label="Neko">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 3l4 5h8l4-5v11a8 8 0 0 1-16 0z" fill="var(--accent)"/><circle cx="9" cy="13" r="1.4" fill="var(--accent-ink)"/><circle cx="15" cy="13" r="1.4" fill="var(--accent-ink)"/><path d="M11 16.5h2l-1 1z" fill="var(--accent-ink)"/></svg>
+      Neko
+    </div>
+    <button class="m">Cena</button><button class="m">Projeto</button><button class="m">Depurar</button><button class="m">Editor</button><button class="m">Ajuda</button>
+    <div class="spacer"></div>
+    <div class="backend" role="group" aria-label="Backend gráfico">
+      <label>wgpu</label>
+      <button class="chip" data-be="Vulkan" aria-pressed="true">Vulkan</button>
+      <button class="chip" data-be="Metal" aria-pressed="false">Metal</button>
+      <button class="chip" data-be="DX12" aria-pressed="false">DX12</button>
+      <button class="chip" data-be="GLES" aria-pressed="false">GLES</button>
+      <button class="chip" data-be="WebGPU" aria-pressed="false">WebGPU</button>
+    </div>
+  </header>
+
+  <nav class="workspaces" role="tablist" aria-label="Espaço de trabalho">
+    <button class="ws" role="tab" aria-selected="true"><span class="dot" style="background:var(--c-2d)"></span>2D</button>
+    <button class="ws" role="tab" aria-selected="false"><span class="dot" style="background:var(--c-3d)"></span>3D</button>
+    <button class="ws" role="tab" aria-selected="false"><span class="dot" style="background:var(--c-ui)"></span>Script</button>
+    <button class="ws" role="tab" aria-selected="false"><span class="dot" style="background:var(--c-audio)"></span>Assets</button>
+  </nav>
+
+  <main class="main">
+    <section class="dock" aria-label="Cena">
+      <div class="dock-head">
+        <span class="title">Cena</span>
+        <button class="icon-btn" id="add-node" title="Adicionar nó filho (Ctrl+A)" aria-label="Adicionar nó filho">
+          <svg viewBox="0 0 16 16"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>
+        </button>
+        <button class="icon-btn" id="del-node" title="Remover nó (Del)" aria-label="Remover nó">
+          <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="dock-body"><ul class="tree" id="scene-tree"></ul></div>
+    </section>
+
+    <section class="viewport" aria-label="Viewport">
+      <div class="vp-tools">
+        <button class="chip" aria-pressed="true">Selecionar</button>
+        <button class="chip" aria-pressed="false">Mover</button>
+        <button class="chip" aria-pressed="false">Rotacionar</button>
+        <button class="chip" aria-pressed="false">Escala</button>
+      </div>
+      <canvas id="vp"></canvas>
+      <div class="vp-info" id="vp-info">zoom 100% · 1280×720</div>
+    </section>
+
+    <aside class="dock" aria-label="Inspetor">
+      <div class="dock-head"><span class="title">Inspetor</span></div>
+      <div class="dock-body"><div class="insp" id="inspector"></div></div>
+    </aside>
+  </main>
+
+  <footer class="status">
+    <span class="ok">wgpu <b id="st-be">Vulkan</b></span>
+    <span>alvo <b>linux-x86_64</b></span>
+    <span>crates <b>neko-core · neko-2d · neko-physics2d · neko-ui</b></span>
+    <span id="st-count"></span>
+  </footer>
+</div>
+
+<div class="scrim" id="scrim">
+  <div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-title">
+    <div class="dlg-head">
+      <h2 id="dlg-title">Criar novo nó</h2>
+      <span class="parent">filho de <code id="dlg-parent">Player</code></span>
+      <button class="icon-btn close" id="dlg-close" aria-label="Fechar">
+        <svg viewBox="0 0 16 16"><path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="search-row">
+      <div class="search">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M10.5 10.5L14 14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <input id="q" type="search" placeholder="Buscar nó… (ex.: sprite, body, light)" autocomplete="off" aria-label="Buscar nó">
+      </div>
+      <div class="filters" role="group" aria-label="Filtrar por categoria">
+        <button class="chip" data-f="all" aria-pressed="true">Todos</button>
+        <button class="chip" data-f="2d" aria-pressed="false"><i style="background:var(--c-2d)"></i>2D</button>
+        <button class="chip" data-f="3d" aria-pressed="false"><i style="background:var(--c-3d)"></i>3D</button>
+        <button class="chip" data-f="ui" aria-pressed="false"><i style="background:var(--c-ui)"></i>UI</button>
+        <button class="chip" data-f="audio" aria-pressed="false"><i style="background:var(--c-audio)"></i>Áudio</button>
+      </div>
+    </div>
+    <div class="dlg-body">
+      <div class="side">
+        <h5>Favoritos</h5><ul id="favs"></ul>
+        <h5>Recentes</h5><ul id="recents"></ul>
+      </div>
+      <div class="class-tree" id="class-tree-wrap"><ul class="tree" id="class-tree" role="tree" aria-label="Tipos de nó"></ul></div>
+    </div>
+    <div class="desc" id="desc" aria-live="polite"></div>
+    <div class="dlg-foot">
+      <span class="kbd">↑↓ navegar · ←→ expandir · Enter criar · Esc fechar</span>
+      <button class="btn" id="dlg-cancel">Cancelar</button>
+      <button class="btn primary" id="dlg-create">Criar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+/* ---------- class database: [name, category, crate, description, children] ---------- */
+const N = (name, cat, crate, desc, kids = []) => ({ name, cat, crate, desc, kids });
+const DB = N("Node", "node", "neko-core", "Base de tudo na árvore de cena. Tem nome, pai, filhos e recebe os callbacks ready, process e physics_process.", [
+  N("Node2D", "2d", "neko-2d", "Objeto 2D com posição, rotação, escala e z-index. Raiz de tudo que vive no canvas 2D.", [
+    N("Sprite2D", "2d", "neko-2d", "Desenha uma textura ou uma região de um atlas. Suporta flip, offset e hframes/vframes."),
+    N("AnimatedSprite2D", "2d", "neko-2d", "Sprite animado por quadros a partir de um recurso SpriteFrames."),
+    N("Camera2D", "2d", "neko-2d", "Define a área visível do mundo 2D. Suavização, limites e zoom."),
+    N("TileMap", "2d", "neko-tilemap", "Grade de tiles com camadas, autotiling e colisão gerada a partir do TileSet."),
+    N("Line2D", "2d", "neko-2d", "Linha poligonal com largura, gradiente e textura ao longo do traçado."),
+    N("Polygon2D", "2d", "neko-2d", "Polígono preenchido, com UV e deformação por ossos."),
+    N("CollisionObject2D", "2d", "neko-physics2d", "Base abstrata de objetos que participam da física 2D. Camadas e máscaras de colisão.", [
+      N("Area2D", "2d", "neko-physics2d", "Detecta sobreposição de corpos e outras áreas. Pode alterar gravidade localmente."),
+      N("PhysicsBody2D", "2d", "neko-physics2d", "Base abstrata dos corpos físicos 2D.", [
+        N("StaticBody2D", "2d", "neko-physics2d", "Corpo que não se move pela simulação. Paredes, chão, plataformas."),
+        N("RigidBody2D", "2d", "neko-physics2d", "Corpo simulado: massa, atrito, forças e impulsos."),
+        N("CharacterBody2D", "2d", "neko-physics2d", "Corpo movido por código com move_and_slide. Ideal para jogadores e inimigos."),
+      ]),
+    ]),
+    N("CollisionShape2D", "2d", "neko-physics2d", "Dá uma forma (retângulo, círculo, cápsula, polígono) a um CollisionObject2D."),
+    N("GpuParticles2D", "2d", "neko-particles", "Sistema de partículas 2D simulado em compute shader WGSL."),
+    N("PointLight2D", "2d", "neko-2d", "Luz 2D a partir de uma textura, com sombras de oclusores."),
+    N("Path2D", "2d", "neko-2d", "Curva Bézier 2D. Use PathFollow2D para mover nós ao longo dela.", [
+      N("PathFollow2D", "2d", "neko-2d", "Segue a curva do Path2D pai por progresso ou distância."),
+    ]),
+    N("NavigationAgent2D", "2d", "neko-nav", "Calcula caminhos sobre a malha de navegação e evita obstáculos."),
+  ]),
+  N("Node3D", "3d", "neko-3d", "Objeto 3D com Transform3D. Raiz de tudo que vive no mundo 3D.", [
+    N("MeshInstance3D", "3d", "neko-3d", "Renderiza uma Mesh com materiais PBR pelo pipeline wgpu."),
+    N("Camera3D", "3d", "neko-3d", "Câmera em perspectiva ou ortográfica. Define FOV, near e far."),
+    N("Light3D", "3d", "neko-3d", "Base abstrata das luzes 3D.", [
+      N("DirectionalLight3D", "3d", "neko-3d", "Luz de direção infinita, como o sol. Cascaded shadow maps."),
+      N("OmniLight3D", "3d", "neko-3d", "Luz pontual que ilumina em todas as direções."),
+      N("SpotLight3D", "3d", "neko-3d", "Luz em cone com ângulo e atenuação."),
+    ]),
+    N("CollisionObject3D", "3d", "neko-physics3d", "Base abstrata de objetos que participam da física 3D.", [
+      N("Area3D", "3d", "neko-physics3d", "Detecta sobreposição em 3D e altera gravidade e amortecimento."),
+      N("PhysicsBody3D", "3d", "neko-physics3d", "Base abstrata dos corpos físicos 3D.", [
+        N("StaticBody3D", "3d", "neko-physics3d", "Corpo 3D imóvel para cenário."),
+        N("RigidBody3D", "3d", "neko-physics3d", "Corpo 3D simulado com massa e inércia."),
+        N("CharacterBody3D", "3d", "neko-physics3d", "Corpo 3D movido por código, com detecção de chão e degraus."),
+      ]),
+    ]),
+    N("CollisionShape3D", "3d", "neko-physics3d", "Forma de colisão 3D: caixa, esfera, cápsula, malha convexa."),
+    N("WorldEnvironment", "3d", "neko-3d", "Céu, névoa, tonemapping, SSAO e glow da cena."),
+    N("GpuParticles3D", "3d", "neko-particles", "Partículas 3D simuladas na GPU."),
+    N("Skeleton3D", "3d", "neko-anim", "Hierarquia de ossos para malhas com skinning."),
+    N("Decal", "3d", "neko-3d", "Projeta texturas sobre a geometria (marcas, sujeira, pegadas)."),
+  ]),
+  N("Control", "ui", "neko-ui", "Base da interface: âncoras, margens, foco e tema.", [
+    N("Label", "ui", "neko-ui", "Texto simples com alinhamento e quebra de linha."),
+    N("RichTextLabel", "ui", "neko-ui", "Texto com marcação BBCode, imagens embutidas e efeitos."),
+    N("Button", "ui", "neko-ui", "Botão clicável com texto e ícone. Emite pressed."),
+    N("LineEdit", "ui", "neko-ui", "Campo de texto de uma linha com IME e seleção."),
+    N("TextureRect", "ui", "neko-ui", "Mostra uma textura dentro do layout da UI."),
+    N("ProgressBar", "ui", "neko-ui", "Barra de progresso com valor mínimo e máximo."),
+    N("Panel", "ui", "neko-ui", "Fundo estilizado pelo tema."),
+    N("Container", "ui", "neko-ui", "Organiza filhos automaticamente.", [
+      N("HBoxContainer", "ui", "neko-ui", "Empilha filhos na horizontal."),
+      N("VBoxContainer", "ui", "neko-ui", "Empilha filhos na vertical."),
+      N("GridContainer", "ui", "neko-ui", "Distribui filhos em colunas."),
+      N("MarginContainer", "ui", "neko-ui", "Adiciona margens em volta dos filhos."),
+      N("ScrollContainer", "ui", "neko-ui", "Área rolável para conteúdo maior que o espaço."),
+    ]),
+  ]),
+  N("AudioStreamPlayer", "audio", "neko-audio", "Toca áudio sem posição no espaço. Música e efeitos de interface."),
+  N("AudioStreamPlayer2D", "audio", "neko-audio", "Áudio posicional 2D, com atenuação pela distância."),
+  N("AudioStreamPlayer3D", "audio", "neko-audio", "Áudio espacial 3D com doppler e HRTF."),
+  N("CanvasLayer", "node", "neko-2d", "Camada de desenho independente da câmera. Use para HUD."),
+  N("SubViewport", "node", "neko-render", "Renderiza uma cena em uma textura separada (render target wgpu)."),
+  N("AnimationPlayer", "node", "neko-anim", "Anima qualquer propriedade de qualquer nó por trilhas e keyframes."),
+  N("Timer", "node", "neko-core", "Conta tempo e emite timeout. One-shot ou repetido."),
+  N("HttpRequest", "node", "neko-net", "Requisições HTTP assíncronas sem bloquear o frame."),
+]);
+
+const byName = new Map(), parentOf = new Map();
+(function index(n, p) { byName.set(n.name, n); if (p) parentOf.set(n.name, p.name); n.kids.forEach(k => index(k, n)); })(DB, null);
+const pathOf = name => { const out = []; let c = name; while (c) { out.unshift(c); c = parentOf.get(c); } return out; };
+const ABSTRACT = new Set(["CollisionObject2D","PhysicsBody2D","CollisionObject3D","PhysicsBody3D","Light3D"]);
+
+/* ---------- icons ---------- */
+const COLOR = { node: "var(--c-node)", "2d": "var(--c-2d)", "3d": "var(--c-3d)", ui: "var(--c-ui)", audio: "var(--c-audio)" };
+const SHAPE = {
+  node: '<circle cx="8" cy="8" r="4.5" fill="none" stroke="C" stroke-width="1.8"/>',
+  "2d": '<circle cx="8" cy="8" r="5" fill="none" stroke="C" stroke-width="1.6"/><circle cx="8" cy="8" r="1.8" fill="C"/>',
+  "3d": '<path d="M8 2.5l5 2.8v5.4L8 13.5 3 10.7V5.3z" fill="none" stroke="C" stroke-width="1.4" stroke-linejoin="round"/><path d="M3 5.3l5 2.8 5-2.8M8 8.1v5.4" fill="none" stroke="C" stroke-width="1.2"/>',
+  ui: '<rect x="2.5" y="3.5" width="11" height="9" rx="1.5" fill="none" stroke="C" stroke-width="1.6"/><path d="M5 7h6M5 9.5h4" stroke="C" stroke-width="1.3" stroke-linecap="round"/>',
+  audio: '<path d="M3 6.5h2.5L9 3.5v9L5.5 9.5H3z" fill="C"/><path d="M11 5.5a3.5 3.5 0 0 1 0 5" fill="none" stroke="C" stroke-width="1.4" stroke-linecap="round"/>',
+};
+const icon = (cat, cls = "ico") => `<svg class="${cls}" viewBox="0 0 16 16" aria-hidden="true">${SHAPE[cat].replaceAll("C", COLOR[cat])}</svg>`;
+const chevron = '<svg viewBox="0 0 10 10"><path d="M2 3.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+const esc = s => s.replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------- local prefs ---------- */
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("neko:" + k); return v ? JSON.parse(v) : d; } catch { return d; } },
+  set(k, v) { try { localStorage.setItem("neko:" + k, JSON.stringify(v)); } catch {} },
+};
+let favs = store.get("favs", ["Sprite2D", "CharacterBody2D", "MeshInstance3D", "Label"]);
+let recents = store.get("recents", ["CollisionShape2D", "Camera2D", "Timer"]);
+
+/* ---------- scene ---------- */
+let uid = 0;
+const S = (name, cls, kids = [], extra = {}) => ({ id: ++uid, name, cls, kids, x: 0, y: 0, ...extra });
+const scene = S("Main", "Node2D", [
+  S("Player", "CharacterBody2D", [
+    S("Sprite2D", "Sprite2D", [], { x: 0, y: 0 }),
+    S("CollisionShape2D", "CollisionShape2D"),
+    S("Camera2D", "Camera2D"),
+  ], { x: -60, y: 20 }),
+  S("Moeda", "Area2D", [S("Sprite2D", "Sprite2D"), S("CollisionShape2D", "CollisionShape2D")], { x: 140, y: -30 }),
+  S("Chao", "StaticBody2D", [S("CollisionShape2D", "CollisionShape2D")], { x: 0, y: 110 }),
+  S("HUD", "CanvasLayer", [S("Pontos", "Label")]),
+]);
+let selectedId = 2; // Player
+const findNode = (id, n = scene, p = null) => { if (n.id === id) return { n, p }; for (const k of n.kids) { const r = findNode(id, k, n); if (r) return r; } return null; };
+const countNodes = n => 1 + n.kids.reduce((a, k) => a + countNodes(k), 0);
+
+const sceneEl = document.getElementById("scene-tree");
+function renderScene() {
+  const build = n => {
+    const cat = byName.get(n.cls)?.cat || "node";
+    return `<li><div class="row${n.id === selectedId ? " selected" : ""}" data-id="${n.id}" tabindex="-1">
+      <span class="tw">${n.kids.length ? chevron : ""}</span>${icon(cat)}<span class="nm">${esc(n.name)}</span>
+      ${n.name !== n.cls ? `<span class="cls">${n.cls}</span>` : ""}</div>
+      ${n.kids.length ? `<ul>${n.kids.map(build).join("")}</ul>` : ""}</li>`;
+  };
+  sceneEl.innerHTML = build(scene);
+  document.getElementById("st-count").innerHTML = `nós <b>${countNodes(scene)}</b>`;
+  renderInspector(); drawViewport();
+}
+sceneEl.addEventListener("click", e => {
+  const r = e.target.closest(".row"); if (!r) return;
+  selectedId = +r.dataset.id; renderScene();
+});
+sceneEl.addEventListener("dblclick", e => { if (e.target.closest(".row")) openDialog(); });
+
+/* ---------- inspector ---------- */
+const inspEl = document.getElementById("inspector");
+function renderInspector() {
+  const { n } = findNode(selectedId) || {}; if (!n) { inspEl.innerHTML = ""; return; }
+  const meta = byName.get(n.cls); const cat = meta.cat;
+  const vec = (vals, k) => `<div class="vec" style="--n:${vals.length}">${vals.map((v, i) => `<input id="${k}-${i}" value="${v}" aria-label="${k} ${"xyz"[i]}">`).join("")}</div>`;
+  let props = "";
+  if (cat === "2d") props = `<div class="section"><h4>Transform2D</h4>
+    <div class="prop"><span>position</span>${vec([n.x.toFixed(1), n.y.toFixed(1)], "pos")}</div>
+    <div class="prop"><span>rotation</span><input id="rot" value="0.0°"></div>
+    <div class="prop"><span>scale</span>${vec(["1.0", "1.0"], "scl")}</div>
+    <div class="prop"><span>z_index</span><input id="z" value="0"></div></div>`;
+  else if (cat === "3d") props = `<div class="section"><h4>Transform3D</h4>
+    <div class="prop"><span>position</span>${vec(["0.0","0.0","0.0"], "pos3")}</div>
+    <div class="prop"><span>rotation</span>${vec(["0°","0°","0°"], "rot3")}</div>
+    <div class="prop"><span>scale</span>${vec(["1.0","1.0","1.0"], "scl3")}</div></div>`;
+  else if (cat === "ui") props = `<div class="section"><h4>Layout</h4>
+    <div class="prop"><span>anchors</span><select id="anc"><option>Top Left</option><option>Full Rect</option><option>Center</option></select></div>
+    <div class="prop"><span>size</span>${vec(["120","24"], "sz")}</div>
+    <div class="prop"><span>theme</span><input id="thm" value="res://ui/neko.tres"></div></div>`;
+  else if (cat === "audio") props = `<div class="section"><h4>Áudio</h4>
+    <div class="prop"><span>stream</span><input id="strm" value="&lt;vazio&gt;"></div>
+    <div class="prop"><span>volume_db</span><input id="vol" value="0.0"></div>
+    <div class="prop"><span>bus</span><select id="bus"><option>Master</option><option>SFX</option><option>Music</option></select></div></div>`;
+  inspEl.innerHTML = `
+    <div class="insp-title">${icon(cat)}<h3>${esc(n.name)}</h3><span class="crate">${meta.crate}</span></div>
+    <div class="section"><h4>Node</h4>
+      <div class="prop"><span>name</span><input id="nm" value="${esc(n.name)}"></div>
+      <div class="prop"><span>class</span><input id="cls" value="${n.cls}" readonly></div>
+      <div class="prop"><span>process_mode</span><select id="pm"><option>Inherit</option><option>Always</option><option>Pausable</option><option>Disabled</option></select></div>
+      <div class="prop"><span>script</span><input id="scr" value="${n.id === 2 ? "player.rs" : "&lt;nenhum&gt;"}"></div>
+    </div>${props}`;
+  inspEl.querySelector("#nm").addEventListener("change", e => { n.name = e.target.value || n.cls; renderScene(); });
+}
+
+/* ---------- viewport ---------- */
+const cv = document.getElementById("vp");
+function drawViewport() {
+  const r = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  cv.width = Math.max(1, r.width * dpr); cv.height = Math.max(1, r.height * dpr);
+  const g = cv.getContext("2d"); g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const css = getComputedStyle(document.documentElement), v = k => css.getPropertyValue(k).trim();
+  g.fillStyle = v("--viewport"); g.fillRect(0, 0, r.width, r.height);
+  g.strokeStyle = v("--grid"); g.lineWidth = 1;
+  const cx = r.width / 2, cy = r.height / 2;
+  for (let x = cx % 32; x < r.width; x += 32) { g.beginPath(); g.moveTo(x + .5, 0); g.lineTo(x + .5, r.height); g.stroke(); }
+  for (let y = cy % 32; y < r.height; y += 32) { g.beginPath(); g.moveTo(0, y + .5); g.lineTo(r.width, y + .5); g.stroke(); }
+  g.strokeStyle = "rgba(255,127,143,.35)"; g.beginPath(); g.moveTo(0, cy + .5); g.lineTo(r.width, cy + .5); g.stroke();
+  g.strokeStyle = "rgba(95,214,164,.35)"; g.beginPath(); g.moveTo(cx + .5, 0); g.lineTo(cx + .5, r.height); g.stroke();
+  // game window rect
+  g.strokeStyle = "rgba(111,168,255,.5)"; g.setLineDash([4, 4]); g.strokeRect(cx - 160 + .5, cy - 90 + .5, 320, 180); g.setLineDash([]);
+  g.font = `11px ${v("--font-mono")}`;
+  const walk = (n, ox, oy) => {
+    const meta = byName.get(n.cls); const x = ox + n.x, y = oy + n.y;
+    if (meta.cat === "2d") {
+      const sel = n.id === selectedId; const col = sel ? v("--accent") : v("--c-2d");
+      g.strokeStyle = col; g.fillStyle = col; g.lineWidth = sel ? 2 : 1.2;
+      if (n.cls === "Sprite2D") { g.globalAlpha = .18; g.fillRect(x - 14, y - 14, 28, 28); g.globalAlpha = 1; g.strokeRect(x - 14, y - 14, 28, 28); }
+      else if (n.cls === "CollisionShape2D") { g.strokeStyle = "rgba(111,168,255,.7)"; g.strokeRect(x - 18, y - 18, 36, 36); }
+      else if (n.cls === "StaticBody2D") { g.globalAlpha = .15; g.fillRect(x - 150, y - 8, 300, 16); g.globalAlpha = 1; g.strokeRect(x - 150, y - 8, 300, 16); }
+      else if (n.cls === "Camera2D") { g.setLineDash([2, 3]); g.strokeRect(x - 60, y - 34, 120, 68); g.setLineDash([]); }
+      else { g.beginPath(); g.arc(x, y, 4, 0, 7); g.fill(); }
+      if (n.kids.length || sel) { g.fillStyle = sel ? v("--accent") : v("--muted"); g.fillText(n.name, x + 22, y - 18); }
+    }
+    n.kids.forEach(k => walk(k, x, y));
+  };
+  walk(scene, cx, cy);
+}
+addEventListener("resize", drawViewport);
+
+/* ---------- create-node dialog ---------- */
+const scrim = document.getElementById("scrim"), qEl = document.getElementById("q");
+const treeEl = document.getElementById("class-tree"), descEl = document.getElementById("desc");
+const createBtn = document.getElementById("dlg-create");
+let filter = "all", query = "", picked = "CharacterBody2D";
+const collapsed = new Set(["Node3D", "Control", "Container", "Path2D", "Light3D", "CollisionObject3D"]);
+
+function matches(n) {
+  const okCat = filter === "all" || n.cat === filter;
+  const okQ = !query || n.name.toLowerCase().includes(query) || n.desc.toLowerCase().includes(query);
+  return okCat && okQ;
+}
+function visibleSet() {
+  const vis = new Set();
+  const walk = n => { let any = matches(n); n.kids.forEach(k => { if (walk(k)) any = true; }); if (any) vis.add(n.name); return any; };
+  walk(DB); return vis;
+}
+const hl = name => { if (!query) return name; const i = name.toLowerCase().indexOf(query); return i < 0 ? name : name.slice(0, i) + "<mark>" + name.slice(i, i + query.length) + "</mark>" + name.slice(i + query.length); };
+
+function renderClassTree() {
+  const vis = visibleSet(); const searching = !!query || filter !== "all";
+  const build = n => {
+    if (!vis.has(n.name)) return "";
+    const kids = n.kids.filter(k => vis.has(k.name));
+    const isCol = !searching && collapsed.has(n.name) && kids.length;
+    return `<li role="treeitem" aria-expanded="${kids.length ? !isCol : ""}"><div class="row${n.name === picked ? " selected" : ""}${isCol ? " collapsed" : ""}${matches(n) ? "" : " dim"}" data-n="${n.name}">
+      <span class="tw" data-tw>${kids.length ? chevron : ""}</span>${icon(n.cat)}<span class="nm">${hl(n.name)}</span>
+      <button class="star${favs.includes(n.name) ? " on" : ""}" data-star aria-label="Favoritar ${n.name}" tabindex="-1">★</button></div>
+      ${kids.length && !isCol ? `<ul role="group">${kids.map(build).join("")}</ul>` : ""}</li>`;
+  };
+  const html = build(DB);
+  treeEl.innerHTML = html || `<li class="no-results">Nenhum nó corresponde a “${esc(query)}”.</li>`;
+  if (!vis.has(picked) || (query && !matches(byName.get(picked)))) {
+    const first = [...treeEl.querySelectorAll(".row:not(.dim)")][0]; picked = first ? first.dataset.n : null;
+    treeEl.querySelectorAll(".row").forEach(r => r.classList.toggle("selected", r.dataset.n === picked));
+  }
+  renderDesc(); renderSide();
+  treeEl.querySelector(".row.selected")?.scrollIntoView({ block: "nearest" });
+}
+function renderDesc() {
+  const n = picked && byName.get(picked);
+  createBtn.disabled = !n || ABSTRACT.has(picked);
+  if (!n) { descEl.innerHTML = `<p style="color:var(--muted)">Selecione um tipo de nó para ver a descrição.</p>`; return; }
+  const p = pathOf(n.name);
+  descEl.innerHTML = `
+    <div class="path">${p.map((x, i) => i === p.length - 1 ? `<b>${x}</b>` : x).join(" → ")}</div>
+    <p>${esc(n.desc)}</p>
+    <div class="meta"><span>crate <b>${n.crate}</b></span><span>feature <b>${n.crate.replace("neko-", "")}</b></span>${ABSTRACT.has(n.name) ? "<span>abstrato · não pode ser instanciado</span>" : ""}</div>`;
+}
+function renderSide() {
+  const li = name => { const n = byName.get(name); return `<li><div class="row${name === picked ? " selected" : ""}" data-n="${name}">${icon(n.cat)}<span class="nm">${name}</span></div></li>`; };
+  document.getElementById("favs").innerHTML = favs.length ? favs.map(li).join("") : `<li class="empty">Clique na ★ de um nó.</li>`;
+  document.getElementById("recents").innerHTML = recents.length ? recents.map(li).join("") : `<li class="empty">Nada criado ainda.</li>`;
+}
+
+treeEl.addEventListener("click", e => {
+  const row = e.target.closest(".row"); if (!row) return; const name = row.dataset.n;
+  if (e.target.closest("[data-star]")) {
+    favs = favs.includes(name) ? favs.filter(f => f !== name) : [...favs, name]; store.set("favs", favs); renderClassTree(); return;
+  }
+  if (e.target.closest("[data-tw]")) { collapsed.has(name) ? collapsed.delete(name) : collapsed.add(name); }
+  picked = name; renderClassTree();
+});
+treeEl.addEventListener("dblclick", e => { const row = e.target.closest(".row"); if (row && !e.target.closest("[data-star]")) { picked = row.dataset.n; create(); } });
+document.querySelector(".side").addEventListener("click", e => { const r = e.target.closest(".row"); if (r) { picked = r.dataset.n; collapsed.clear(); renderClassTree(); } });
+document.querySelector(".side").addEventListener("dblclick", e => { const r = e.target.closest(".row"); if (r) { picked = r.dataset.n; create(); } });
+
+qEl.addEventListener("input", () => { query = qEl.value.trim().toLowerCase(); renderClassTree(); });
+document.querySelectorAll(".filters .chip").forEach(b => b.addEventListener("click", () => {
+  filter = b.dataset.f; document.querySelectorAll(".filters .chip").forEach(c => c.setAttribute("aria-pressed", c === b)); renderClassTree();
+}));
+
+function move(dir) {
+  const rows = [...treeEl.querySelectorAll(".row")]; const i = rows.findIndex(r => r.dataset.n === picked);
+  const next = rows[Math.max(0, Math.min(rows.length - 1, i + dir))]; if (next) { picked = next.dataset.n; renderClassTree(); }
+}
+scrim.addEventListener("keydown", e => {
+  if (e.key === "ArrowDown") { e.preventDefault(); move(1); }
+  else if (e.key === "ArrowUp") { e.preventDefault(); move(-1); }
+  else if (e.key === "ArrowRight" && document.activeElement !== qEl || (e.key === "ArrowRight" && !qEl.value)) { collapsed.delete(picked); renderClassTree(); }
+  else if (e.key === "ArrowLeft" && (document.activeElement !== qEl || !qEl.value)) { if (byName.get(picked)?.kids.length) { collapsed.add(picked); renderClassTree(); } }
+  else if (e.key === "Enter") { e.preventDefault(); create(); }
+  else if (e.key === "Escape") closeDialog();
+});
+
+function openDialog() {
+  const { n } = findNode(selectedId); document.getElementById("dlg-parent").textContent = n.name;
+  scrim.hidden = false; qEl.value = ""; query = ""; renderClassTree(); qEl.focus({ preventScroll: true });
+}
+function closeDialog() { scrim.hidden = true; document.getElementById("add-node").focus(); }
+function create() {
+  if (!picked || ABSTRACT.has(picked)) return;
+  const { n: parent } = findNode(selectedId); const meta = byName.get(picked);
+  let name = picked, i = 2; while (parent.kids.some(k => k.name === name)) name = picked + i++;
+  const node = S(name, picked, [], { x: meta.cat === "2d" ? (Math.random() * 120 - 60) | 0 : 0, y: meta.cat === "2d" ? (Math.random() * 80 - 40) | 0 : 0 });
+  parent.kids.push(node); selectedId = node.id;
+  recents = [picked, ...recents.filter(r => r !== picked)].slice(0, 8); store.set("recents", recents);
+  closeDialog(); renderScene(); toast(`${picked} criado em ${parent.name}`);
+}
+let tt; function toast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.hidden = false; clearTimeout(tt); tt = setTimeout(() => t.hidden = true, 2200); }
+
+document.getElementById("add-node").addEventListener("click", openDialog);
+document.getElementById("dlg-close").addEventListener("click", closeDialog);
+document.getElementById("dlg-cancel").addEventListener("click", closeDialog);
+createBtn.addEventListener("click", create);
+scrim.addEventListener("click", e => { if (e.target === scrim) closeDialog(); });
+document.getElementById("del-node").addEventListener("click", () => {
+  const r = findNode(selectedId); if (!r || !r.p) { toast("A raiz da cena não pode ser removida"); return; }
+  r.p.kids = r.p.kids.filter(k => k !== r.n); selectedId = r.p.id; renderScene();
+});
+addEventListener("keydown", e => {
+  if (!scrim.hidden) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "a") { e.preventDefault(); openDialog(); }
+});
+
+/* backend + workspace chips */
+document.querySelectorAll(".backend .chip").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".backend .chip").forEach(c => c.setAttribute("aria-pressed", c === b));
+  document.getElementById("st-be").textContent = b.dataset.be;
+}));
+document.querySelectorAll(".ws").forEach(b => b.addEventListener("click", () => document.querySelectorAll(".ws").forEach(c => c.setAttribute("aria-selected", c === b))));
+document.querySelectorAll(".vp-tools .chip").forEach(b => b.addEventListener("click", () => document.querySelectorAll(".vp-tools .chip").forEach(c => c.setAttribute("aria-pressed", c === b))));
+
+renderScene();
+openDialog();
+})();
+</script>

@@ -1,0 +1,50 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+default-members = ["crates/neko-editor"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MPL-2.0"
+
+[workspace.dependencies]
+neko-platform = { path = "crates/neko-platform" }
+neko-base = { path = "crates/neko-base", default-features = false }
+neko-os = { path = "crates/neko-os", default-features = false }
+neko-gpu = { path = "crates/neko-gpu" }
+neko-audio = { path = "crates/neko-audio" }
+neko-script = { path = "crates/neko-script" }
+neko-winit = { path = "crates/neko-winit" }
+neko-sdl3 = { path = "crates/neko-sdl3" }
+neko-sdl3-sys = { path = "crates/neko-sdl3-sys" }
+neko-gamepad-sdl3 = { path = "crates/neko-gamepad-sdl3" }
+neko-render = { path = "crates/neko-render" }
+neko-wgpu = { path = "crates/neko-wgpu" }
+neko-soft = { path = "crates/neko-soft" }
+neko-ui = { path = "crates/neko-ui" }
+neko-project = { path = "crates/neko-project" }
+neko-core = { path = "crates/neko-core" }
+neko = { path = "crates/neko" }
+
+raw-window-handle = "0.6"
+winit = { version = "0.30", default-features = false, features = ["rwh_06", "x11", "wayland", "wayland-dlopen", "wayland-csd-adwaita"] }
+libloading = "0.8"
+wgpu = "30"
+epaint = "0.37"
+softbuffer = "0.4"
+pollster = "0.4"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+toml = "1"
+dirs = "7"
+getrandom = "0.3"
+log = "0.4"
+thiserror = { version = "2", default-features = false }
+libm = "0.2"
+hashbrown = { version = "0.17", default-features = false }
+png = "0.18"
+resvg = { version = "0.50", default-features = false }
+
+[profile.dev.package."*"]
+opt-level = 2

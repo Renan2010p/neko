@@ -1,0 +1,12 @@
+[package]
+name = "neko-ui"
+description = "Neko's own GUI: Control nodes, containers, themes and input, modeled on Godot's GUI."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+neko-platform.workspace = true
+neko-render.workspace = true
+# Fallback glyphs (symbols, emoji) behind the bundled Inter font.
+epaint = { workspace = true, features = ["default_fonts"] }

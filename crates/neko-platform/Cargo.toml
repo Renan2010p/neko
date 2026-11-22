@@ -1,0 +1,10 @@
+[package]
+name = "neko-platform"
+description = "Neko platform contracts: window, input and event loop. Backends (SDL3, winit, ...) implement these traits."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+raw-window-handle.workspace = true
+thiserror = { workspace = true, features = ["std"] }

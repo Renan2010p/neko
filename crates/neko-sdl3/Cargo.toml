@@ -1,0 +1,12 @@
+[package]
+name = "neko-sdl3"
+description = "Neko platform backend built on SDL3, loaded at runtime (no build-time SDL dependency)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+neko-platform.workspace = true
+neko-sdl3-sys.workspace = true
+neko-gamepad-sdl3.workspace = true
+log.workspace = true

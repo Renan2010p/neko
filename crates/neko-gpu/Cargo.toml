@@ -1,0 +1,10 @@
+[package]
+name = "neko-gpu"
+description = "Neko GPU contract (Godot's RenderingDeviceDriver, slimmed down). Backends: wgpu, software, consoles..."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+neko-platform.workspace = true
+thiserror = { workspace = true, features = ["std"] }

@@ -1,0 +1,13 @@
+[package]
+name = "neko-wgpu"
+description = "Neko renderer backend built on wgpu (Vulkan, Metal, DX12, GLES, WebGPU)."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+neko-platform.workspace = true
+neko-render.workspace = true
+wgpu.workspace = true
+pollster.workspace = true
+log.workspace = true

@@ -1,0 +1,15 @@
+[package]
+name = "neko-script"
+description = "NekoScript: Neko's scripting language, compatible with Godot's GDScript."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["std"]
+# With an OS: the clock seeds `randomize()`, std float math.
+std = ["neko-base/std", "thiserror/std"]
+
+[dependencies]
+neko-base.workspace = true
+thiserror.workspace = true

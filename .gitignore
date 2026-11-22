@@ -1,0 +1,4 @@
+/target
+*.png
+!design/**/*.png
+!docs/**/*.png

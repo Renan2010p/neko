@@ -1,0 +1,69 @@
+[package]
+name = "neko"
+description = "Neko game engine. Pick backends with Cargo features."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["os-std", "window-winit", "render-wgpu", "gamepad-sdl3"]
+
+# OS backends (time, threads, files). A console port supplies its own `neko_os::Os`.
+os-std = ["neko-os/std-backend"]
+
+# Window and input backends
+window-sdl3 = ["dep:neko-sdl3"]
+window-winit = ["dep:neko-winit"]
+window-headless = []          # planned
+
+# Input
+## Gamepads through SDL3, like Godot (the window backend stays native).
+gamepad-sdl3 = ["neko-winit?/gamepad-sdl3"]
+
+# Render backends
+render-wgpu = ["dep:neko-wgpu"]
+render-soft = ["dep:neko-soft"]
+render-sdl3-gpu = []          # planned
+render-gl = []                # planned
+
+# Audio backends
+audio-sdl3 = []               # planned
+audio-cpal = []               # planned
+
+# Image formats
+## SVG textures (Godot's default icon.svg), rasterized at load like Godot's importer.
+image-svg = ["dep:resvg"]
+
+# Engine modules
+2d = []                       # planned
+3d = []                       # planned
+physics2d = []                # planned
+physics3d = []                # planned
+ui = []                       # planned
+
+[dependencies]
+neko-core.workspace = true
+neko-ui.workspace = true
+neko-platform.workspace = true
+neko-os.workspace = true
+neko-gpu.workspace = true
+neko-audio.workspace = true
+neko-script.workspace = true
+neko-render.workspace = true
+neko-project.workspace = true
+neko-sdl3 = { workspace = true, optional = true }
+neko-winit = { workspace = true, optional = true, default-features = false }
+neko-wgpu = { workspace = true, optional = true }
+neko-soft = { workspace = true, optional = true }
+log.workspace = true
+png.workspace = true
+serde_json.workspace = true
+resvg = { workspace = true, optional = true }
+
+[[example]]
+name = "render_scene"
+required-features = ["render-soft"]
+
+[[example]]
+name = "banner"
+required-features = ["render-soft"]

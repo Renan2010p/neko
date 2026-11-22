@@ -1,0 +1,18 @@
+[package]
+name = "neko-core"
+description = "Neko core: class database, variants and the scene tree."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+default = ["std"]
+# With an OS: legacy TOML scenes, OS entropy for new ids, std float math.
+std = ["neko-base/std", "thiserror/std", "dep:serde", "dep:toml", "dep:getrandom"]
+
+[dependencies]
+neko-base.workspace = true
+thiserror.workspace = true
+serde = { workspace = true, optional = true }
+toml = { workspace = true, optional = true }
+getrandom = { workspace = true, optional = true }
